@@ -3,14 +3,9 @@ import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
-// Extend jsPDF with autotable
-declare module "jspdf" {
-    interface jsPDF {
-        autoTable: (options: any) => jsPDF;
-    }
-}
+// No longer need separate declaration for autotable as we use it as a standalone function
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -50,8 +45,8 @@ export async function GET(req: NextRequest) {
     const doc = new jsPDF() as any;
 
     // Design styles
-    const primaryColor = [124, 58, 237]; // #7c3aed
-    const secondaryColor = [219, 39, 119]; // #db2777
+    const primaryColor: [number, number, number] = [124, 58, 237]; // #7c3aed
+    const secondaryColor: [number, number, number] = [219, 39, 119]; // #db2777
 
     // Header Color Bar
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -109,7 +104,7 @@ export async function GET(req: NextRequest) {
     doc.setFont("helvetica", "bold");
     doc.text("CATEGORY UTILIZATION", 20, 100);
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: 105,
         head: [['Category', 'Amount', 'Allocation']],
         body: categoryRows,
@@ -132,7 +127,7 @@ export async function GET(req: NextRequest) {
     doc.setFont("helvetica", "bold");
     doc.text("TRANSACTION LEDGER", 20, (doc as any).lastAutoTable.finalY + 15);
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 20,
         head: [['Date', 'Description', 'Category', 'Amount']],
         body: transactionRows,
