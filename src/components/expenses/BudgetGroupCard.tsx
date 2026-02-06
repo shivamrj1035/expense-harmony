@@ -21,7 +21,7 @@ export function BudgetGroupCard({ categories, expenses, onAddExpense }: BudgetGr
     if (budgetCategories.length === 0) return null;
 
     return (
-        <GlassCard className="p-0 overflow-hidden flex flex-col border-primary/20 bg-primary/5">
+        <GlassCard className="p-0 overflow-hidden flex flex-col min-h-fit border-primary/20 bg-primary/5">
             <div className="p-4 border-b border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
@@ -37,7 +37,7 @@ export function BudgetGroupCard({ categories, expenses, onAddExpense }: BudgetGr
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 max-h-[400px]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 max-h-[210px]">
                 {budgetCategories.map(cat => {
                     const monthExpenses = expenses.filter(e =>
                         e.categoryId === cat.id &&
