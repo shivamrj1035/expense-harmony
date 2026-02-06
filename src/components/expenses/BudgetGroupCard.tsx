@@ -21,7 +21,7 @@ export function BudgetGroupCard({ categories, expenses, onAddExpense }: BudgetGr
     if (budgetCategories.length === 0) return null;
 
     return (
-        <GlassCard className="p-0 overflow-hidden flex flex-col h-full border-primary/20 bg-primary/5">
+        <GlassCard className="p-0 overflow-hidden flex flex-col border-primary/20 bg-primary/5">
             <div className="p-4 border-b border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
