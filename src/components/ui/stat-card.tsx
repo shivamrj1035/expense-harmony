@@ -37,7 +37,7 @@ const StatCard = ({
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-bold tracking-tight">{value}</p>
+          <p className="text-2xl md:text-3xl font-bold tracking-tight">{value}</p>
           {change !== undefined && (
             <div className={cn("flex items-center gap-1 text-sm", getTrendColor())}>
               {getTrendIcon()}

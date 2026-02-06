@@ -1,73 +1,78 @@
-# Welcome to your Lovable project
+# SpendWise: Your Advanced Analytics Hub 📈
 
-## Project info
+SpendWise is a high-performance financial tracking application designed for clarity, flexibility, and professional reporting. Transform your spending data into actionable insights with our modular dashboard and automated reporting engine.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## ✨ Core Features
 
-## How can I edit this code?
+### 🚀 Modular Analytics Hub
+*   **Resizable Widgets**: Customize your dashboard by "stretching" or "shrinking" cards. Focus on what matters—whether it's a full-width Spending Pulse or a compact breakdown.
+*   **Drag-and-Drop Layout**: Reorder your financial widgets to suit your workflow. Your custom layout is automatically persisted.
 
-There are several ways of editing your application.
+### 📊 Deep Financial Insights
+*   **Spending Velocity**: Visualize daily transaction patterns over a 14-day rolling window.
+*   **6-Month Pulse**: Track monthly spending trends to identify long-term seasonal patterns.
+*   **Visual Breakdown**: Interactive pie charts and detailed category utilization bars for immediate clarity on budget allocation.
+*   **Activity Stream**: A high-fidelity log of your most recent financial movements.
 
-**Use Lovable**
+### ✉️ Professional Reporting Engine
+*   **Smart Email Analysis**: Dispatch monthly financial hubs directly to your email with a single click.
+*   **High-Fidelity PDF Exports**: Generate professional transaction ledgers and category summaries in PDF format, ready for download or archive.
+*   **Calendar Tracking**: Specialized views for recurring expenses with "Ordered vs. Skipped" status indicators.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## 🛠️ Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+*   **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
+*   **Database**: [Prisma](https://www.prisma.io/) + [PostgreSQL (Supabase)](https://supabase.com/)
+*   **Authentication**: [Clerk](https://clerk.com/)
+*   **Styling**: Tailwind CSS + shadcn/ui + Glassmorphism Design
+*   **Charts**: [Recharts](https://recharts.org/)
+*   **Email**: [Nodemailer](https://nodemailer.com/) (Gmail SMTP Integration)
+*   **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF)
 
-**Use your preferred IDE**
+## 🚦 Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 1. Prerequisites
+*   Node.js 18+
+*   PostgreSQL Database instance
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 2. Installation
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd spendwise
 
-Follow these steps:
+# Install dependencies
+npm install
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 3. Environment Setup
+Create a `.env` file in the root directory:
+```env
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_key
+CLERK_SECRET_KEY=your_secret
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Database
+DATABASE_URL=your_db_url
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Email (SMTP)
+GMAIL_USER=your_email@gmail.com
+GMAIL_PASS=your_app_password
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### 4. Database Initialization
+```bash
+npx prisma generate
+npx prisma db push
+```
+
+### 5. Run Development Server
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 💡 Helpfulness & Usage
+Identify where your money is flowing within seconds. Use the **Analytics Hub** to spot anomalies in your "Month Burn" and use the **Send Report** feature to export your data for tax season or personal audits. SpendWise isn't just a tracker; it's a decision-making engine for your personal finance.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+Built with ❤️ by the SpendWise Team.

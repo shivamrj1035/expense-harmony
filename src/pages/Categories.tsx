@@ -25,7 +25,7 @@ import { Database } from "@/integrations/supabase/types";
 
 type CategoryFrequency = Database["public"]["Enums"]["category_frequency"];
 
-const CATEGORY_ICONS = ["💰", "🏠", "🚗", "🍔", "🎮", "💼", "🛒", "🎓", "💊", "✈️", "🎬", "📱"];
+const CATEGORY_ICONS = ["💰", "🏠", "⛽", "🍽️", "🎮", "💼", "🛒", "🎓", "💊", "✈️", "🎬", "📱"];
 const CATEGORY_COLORS = [
   "#8B5CF6",
   "#06B6D4",
@@ -169,11 +169,10 @@ export default function Categories() {
                         key={icon}
                         type="button"
                         onClick={() => setFormData({ ...formData, icon })}
-                        className={`h-10 w-10 rounded-lg text-xl flex items-center justify-center transition-all ${
-                          formData.icon === icon
-                            ? "bg-primary/20 ring-2 ring-primary"
-                            : "bg-muted hover:bg-muted/80"
-                        }`}
+                        className={`h-10 w-10 rounded-lg text-xl flex items-center justify-center transition-all ${formData.icon === icon
+                          ? "bg-primary/20 ring-2 ring-primary"
+                          : "bg-muted hover:bg-muted/80"
+                          }`}
                       >
                         {icon}
                       </button>
@@ -189,9 +188,8 @@ export default function Categories() {
                         key={color}
                         type="button"
                         onClick={() => setFormData({ ...formData, color })}
-                        className={`h-10 w-10 rounded-lg transition-all ${
-                          formData.color === color ? "ring-2 ring-offset-2 ring-offset-background ring-white" : ""
-                        }`}
+                        className={`h-10 w-10 rounded-lg transition-all ${formData.color === color ? "ring-2 ring-offset-2 ring-offset-background ring-white" : ""
+                          }`}
                         style={{ background: color }}
                       />
                     ))}
@@ -260,8 +258,8 @@ export default function Categories() {
                   {createCategory.isPending || updateCategory.isPending
                     ? "Saving..."
                     : editingCategory
-                    ? "Update Category"
-                    : "Create Category"}
+                      ? "Update Category"
+                      : "Create Category"}
                 </Button>
               </form>
             </DialogContent>

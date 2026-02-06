@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Medium Dark Theme - Less intense than pure black */
+    --background: 240 10% 12%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 16%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 16%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 263 84% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 199 89% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 10% 22%;
+    --muted-foreground: 240 5% 75%;
+
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 346 87% 62%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 10% 25%;
+    --input: 240 10% 25%;
+    --ring: 263 84% 65%;
+
+    --radius: 1rem;
+
+    --glass-bg: 240 10% 20% / 0.6;
+    --glass-border: 0 0% 100% / 0.1;
+
+    --gradient-primary: linear-gradient(135deg, #7c3aed, #db2777);
+    --gradient-secondary: linear-gradient(135deg, #0ea5e9, #10b981);
+    --gradient-accent: linear-gradient(135deg, #059669, #0ea5e9);
+    --shadow-glow: 0 0 60px -15px rgba(124, 58, 237, 0.4);
+    --shadow-card: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/30;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply relative overflow-hidden rounded-xl border border-white/10 bg-card/60 backdrop-blur-xl;
+    box-shadow: var(--shadow-card);
+  }
+
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-card {
+    @apply glass-card p-6 transition-all duration-300 hover:scale-[1.02] hover:border-primary/30;
+  }
+
+  /* Animated background mesh */
+  .mesh-gradient {
+    background:
+      radial-gradient(at 40% 20%, hsl(271 91% 65% / 0.12) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(185 100% 50% / 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(340 82% 60% / 0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, hsl(142 76% 56% / 0.05) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsl(271 91% 65% / 0.08) 0px, transparent 50%),
+      hsl(var(--background));
+  }
+
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 40px -10px hsl(271 91% 65% / 0.5);
+  }
+}

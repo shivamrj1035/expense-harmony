@@ -1,5 +1,5 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/lib/auth";
+"use client";
+
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -10,7 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -20,30 +19,19 @@ import {
   FolderOpen,
   BarChart3,
   Settings,
-  LogOut,
   Wallet,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Categories", url: "/categories", icon: FolderOpen },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/auth");
-  };
 
   return (
     <Sidebar
@@ -70,7 +58,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
-                      to={item.url}
+                      href={item.url}
                       end
                       className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-sidebar-accent"
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
@@ -87,14 +75,10 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <Button
-          variant="ghost"
-          onClick={handleSignOut}
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-        >
-          <LogOut className="h-5 w-5" />
-          {!collapsed && <span>Sign Out</span>}
-        </Button>
+        {/* Sign out is handled by UserButton in the header for cleaner UI */}
+        <p className="text-[10px] text-muted-foreground text-center">
+          {!collapsed ? "SpendWise v1.0" : "v1.0"}
+        </p>
       </SidebarFooter>
     </Sidebar>
   );
