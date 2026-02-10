@@ -26,7 +26,7 @@ export function CategoryTracker({ category, expenses }: { category: any, expense
         const dateKey = format(date, "yyyy-MM-dd");
         setLoadingDate(dateKey);
         try {
-            await toggleCategoryExpense(category.id, date);
+            await toggleCategoryExpense(category.id, dateKey);
             // toast.success("Updated successfully");
         } catch (error: any) {
             toast.error(error.message || "Failed to update");
