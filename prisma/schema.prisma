@@ -16,9 +16,13 @@ model User {
   email           String           @unique
   reportFrequency ReportFrequency  @default(MONTHLY)
   reportDay       Int              @default(1) // 1-31 for Monthly, 0-6 for Weekly
+  showStocksInSummary Boolean     @default(false)
+  showMutualFundsInSummary Boolean @default(false)
   createdAt       DateTime         @default(now())
   categories      Category[]
   expenses        Expense[]
+  stocks          Stock[]
+  mutualFunds     MutualFund[]
 }
 
 enum ReportFrequency {
@@ -80,4 +84,23 @@ model RecurringState {
   categoryId       String   @unique
   category         Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   lastGeneratedDate DateTime
+}
+
+model Stock {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+  symbol          String
+  quantity        Float
+  avgPrice        Float
+  createdAt       DateTime @default(now())
+}
+model MutualFund {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+  symbol          String   // Scheme Name or Ticker
+  quantity        Float
+  avgPrice        Float    // Purchase Price / Average NAV
+  createdAt       DateTime @default(now())
 }

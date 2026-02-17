@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { updateUserSettings } from "@/app/actions/user";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
-import { Moon, Sun, Bell, Globe, Mail } from "lucide-react";
+import { Moon, Sun, Bell, Globe, Mail, LayoutDashboard, TrendingUp, PieChart } from "lucide-react";
 
 export default function SettingsClient({ user }: { user: any }) {
     const { theme, setTheme } = useTheme();
@@ -149,6 +149,51 @@ export default function SettingsClient({ user }: { user: any }) {
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+                </GlassCard>
+
+                <GlassCard className="p-6 space-y-6">
+                    <div className="flex items-center gap-3">
+                        <LayoutDashboard className="h-5 w-5 text-primary" />
+                        <h3 className="font-semibold">Dashboard</h3>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <TrendingUp className="h-4 w-4" />
+                            <span>Show Stocks in Summary</span>
+                        </div>
+                        <Switch
+                            checked={user.showStocksInSummary}
+                            onCheckedChange={async (checked) => {
+                                try {
+                                    await updateUserSettings({ showStocksInSummary: checked });
+                                    toast.success("Dashboard preference updated");
+                                    window.location.reload();
+                                } catch (error) {
+                                    toast.error("Failed to update preference");
+                                }
+                            }}
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <PieChart className="h-4 w-4" />
+                            <span>Show Mutual Funds in Summary</span>
+                        </div>
+                        <Switch
+                            checked={user.showMutualFundsInSummary}
+                            onCheckedChange={async (checked) => {
+                                try {
+                                    await updateUserSettings({ showMutualFundsInSummary: checked });
+                                    toast.success("Dashboard preference updated");
+                                    window.location.reload();
+                                } catch (error) {
+                                    toast.error("Failed to update preference");
+                                }
+                            }}
+                        />
                     </div>
                 </GlassCard>
 

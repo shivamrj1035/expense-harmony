@@ -20,11 +20,14 @@ import {
   BarChart3,
   Settings,
   Wallet,
+  PieChart,
 } from "lucide-react";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Expenses", url: "/expenses", icon: Receipt },
+  { title: "Stock Analysis", url: "/stocks", icon: BarChart3 },
+  { title: "Mutual Funds", url: "/mutual-funds", icon: PieChart },
   { title: "Categories", url: "/categories", icon: FolderOpen },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

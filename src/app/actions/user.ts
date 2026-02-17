@@ -38,8 +38,10 @@ export async function getUserSettings() {
 }
 
 export async function updateUserSettings(data: {
-    reportFrequency: "WEEKLY" | "MONTHLY";
-    reportDay: number;
+    reportFrequency?: "WEEKLY" | "MONTHLY";
+    reportDay?: number;
+    showStocksInSummary?: boolean;
+    showMutualFundsInSummary?: boolean;
 }) {
     const { userId } = auth();
     if (!userId) throw new Error("Unauthorized");

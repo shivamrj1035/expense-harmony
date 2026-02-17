@@ -2,19 +2,18 @@
 
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { StatCard } from "@/components/ui/stat-card";
 import { GlassCard } from "@/components/ui/glass-card";
 import {
     Wallet,
     Receipt,
-    Calendar,
     PieChart,
     ArrowUpRight,
     TrendingUp,
+    TrendingDown,
     Send,
-    Download,
     Mail,
-    Loader2
+    Loader2,
+    RefreshCw
 } from "lucide-react";
 import {
     PieChart as RechartsPie,
@@ -27,6 +26,8 @@ import {
     CartesianGrid,
     Area,
     AreaChart,
+    BarChart as RechartsBar,
+    Bar,
 } from "recharts";
 import {
     DndContext,
@@ -47,6 +48,7 @@ import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { SortableDashboardCard } from "@/components/dashboard/SortableDashboardCard";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfWeek, endOfWeek } from "date-fns";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
     Dialog,
     DialogContent,
@@ -57,8 +59,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { sendMonthlyAnalysisReport } from "@/app/actions/hub-reports";
+import { refreshPortfolio } from "@/app/actions/stocks";
+import { refreshMFPortfolio } from "@/app/actions/mutual-funds";
 import { toast } from "sonner";
+import { sendMonthlyAnalysisReport } from "@/app/actions/hub-reports";
 
 const CHART_COLORS = [
     "#7c3aed",
@@ -69,25 +73,55 @@ const CHART_COLORS = [
     "#3b82f6",
 ];
 
-import {
-    BarChart as RechartsBar,
-    Bar,
-} from "recharts";
-
-export default function DashboardClient({ expenses, categories }: any) {
+export default function DashboardClient({
+    expenses,
+    categories,
+    stocks = [],
+    funds = [],
+    showStocksInSummary,
+    showMutualFundsInSummary,
+}: any) {
+    const router = useRouter();
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [widgets, setWidgets] = useState(() => {
+        let currentWidgets: any[] = [];
+
         if (typeof window !== "undefined") {
             const saved = localStorage.getItem("dashboard-config-v4");
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                currentWidgets = JSON.parse(saved);
+            }
         }
-        return [
-            { id: "stats", size: 6 },
-            { id: "trend", size: 3 },
-            { id: "history", size: 3 },
-            { id: "breakdown-pie", size: 3 },
-            { id: "breakdown-detailed", size: 3 },
-            { id: "recent", size: 6 },
-        ];
+
+        if (currentWidgets.length === 0) {
+            currentWidgets = [
+                { id: "stats", size: 6 },
+                { id: "trend", size: 3 },
+                { id: "history", size: 3 },
+                { id: "breakdown-pie", size: 3 },
+                { id: "breakdown-detailed", size: 3 },
+                { id: "recent", size: 6 },
+            ];
+        }
+
+        let updatedWidgets = [...currentWidgets];
+        const hasStocks = updatedWidgets.some(w => w.id === "stocks");
+        const hasFunds = updatedWidgets.some(w => w.id === "funds");
+
+        if (showStocksInSummary && !hasStocks) {
+            updatedWidgets.unshift({ id: "stocks", size: 6 });
+        } else if (!showStocksInSummary && hasStocks) {
+            updatedWidgets = updatedWidgets.filter(w => w.id !== "stocks");
+        }
+
+        if (showMutualFundsInSummary && !hasFunds) {
+            const stocksIdx = updatedWidgets.findIndex(w => w.id === "stocks");
+            updatedWidgets.splice(stocksIdx !== -1 ? stocksIdx + 1 : 0, 0, { id: "funds", size: 6 });
+        } else if (!showMutualFundsInSummary && hasFunds) {
+            updatedWidgets = updatedWidgets.filter(w => w.id !== "funds");
+        }
+
+        return updatedWidgets;
     });
 
     const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -98,10 +132,9 @@ export default function DashboardClient({ expenses, categories }: any) {
         setSendingReport(true);
         try {
             await sendMonthlyAnalysisReport(reportMonth);
-            toast.success(`Analysis report for ${format(new Date(reportMonth + "-02"), "MMMM yyyy")} sent!`);
+            toast.success(`Analysis report sent!`);
             setReportDialogOpen(false);
         } catch (error) {
-            console.error("Report error:", error);
             toast.error("Failed to send analysis report.");
         } finally {
             setSendingReport(false);
@@ -119,8 +152,6 @@ export default function DashboardClient({ expenses, categories }: any) {
         const currentMonthEnd = endOfMonth(now);
         const lastMonthStart = startOfMonth(subMonths(now, 1));
         const lastMonthEnd = endOfMonth(subMonths(now, 1));
-        const weekStart = startOfWeek(now);
-        const weekEnd = endOfWeek(now);
 
         const currentMonthExpenses = expenses.filter((e: any) => {
             const date = new Date(e.date);
@@ -132,14 +163,8 @@ export default function DashboardClient({ expenses, categories }: any) {
             return isWithinInterval(date, { start: lastMonthStart, end: lastMonthEnd });
         });
 
-        const weekExpenses = expenses.filter((e: any) => {
-            const date = new Date(e.date);
-            return isWithinInterval(date, { start: weekStart, end: weekEnd });
-        });
-
         const currentTotal = currentMonthExpenses.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
         const lastTotal = lastMonthExpenses.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
-        const weekTotal = weekExpenses.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
 
         const monthlyData: { month: string; amount: number }[] = [];
         for (let i = 5; i >= 0; i--) {
@@ -159,10 +184,9 @@ export default function DashboardClient({ expenses, categories }: any) {
             });
         }
 
-        const averageTotal = monthlyData.reduce((sum, m) => sum + m.amount, 0) / monthlyData.length;
+        const averageTotal = monthlyData.reduce((sum, m) => sum + m.amount, 0) / (monthlyData.length || 1);
         const change = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 0;
 
-        // Category Breakdown for Reports summary
         const breakdown: Record<string, { name: string; amount: number; color: string }> = {};
         currentMonthExpenses.forEach((expense: any) => {
             const category = expense.category;
@@ -183,10 +207,8 @@ export default function DashboardClient({ expenses, categories }: any) {
         return {
             currentTotal,
             lastTotal,
-            weekTotal,
             averageTotal,
             change,
-            transactionCount: currentMonthExpenses.length,
             monthlyData,
             categoryStats,
             topCategory,
@@ -262,9 +284,7 @@ export default function DashboardClient({ expenses, categories }: any) {
         <div className="space-y-6 max-w-[1400px] mx-auto pb-20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">
-                        Analytics Hub
-                    </h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Analytics Hub</h1>
                     <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-[0.2em] mt-0.5">
                         Modular Report Engine • {format(new Date(), "MMMM yyyy")}
                     </p>
@@ -290,7 +310,7 @@ export default function DashboardClient({ expenses, categories }: any) {
                             </DialogHeader>
                             <div className="space-y-6 pt-4">
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    We will generate a high-fidelity analysis of your spending for the selected month and send it directly to your email. The mail will include a link to download the full PDF ledger.
+                                    We will generate a high-fidelity analysis of your spending for the selected month and send it directly to your email.
                                 </p>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Select Month</Label>
@@ -306,14 +326,7 @@ export default function DashboardClient({ expenses, categories }: any) {
                                     className="w-full bg-gradient-primary hover:opacity-90 h-12 text-sm font-black uppercase tracking-widest"
                                     disabled={sendingReport}
                                 >
-                                    {sendingReport ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Generating Insights...
-                                        </>
-                                    ) : (
-                                        "Dispatch Report"
-                                    )}
+                                    {sendingReport ? "Generating..." : "Dispatch Report"}
                                 </Button>
                             </div>
                         </DialogContent>
@@ -321,17 +334,9 @@ export default function DashboardClient({ expenses, categories }: any) {
                 </div>
             </div>
 
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-                modifiers={[restrictToFirstScrollableAncestor]}
-            >
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToFirstScrollableAncestor]}>
                 <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
-                    <SortableContext
-                        items={widgets.map(w => w.id)}
-                        strategy={rectSortingStrategy}
-                    >
+                    <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
                         {widgets.map((widget: any) => {
                             const { id, size } = widget;
                             const commonProps = {
@@ -342,40 +347,90 @@ export default function DashboardClient({ expenses, categories }: any) {
                                 canShrink: size > 2
                             };
 
+                            if (id === "stocks") {
+                                const totalInvestment = stocks.reduce((sum: number, s: any) => sum + (s.quantity * s.avgPrice), 0);
+                                const currentValue = stocks.reduce((sum: number, s: any) => sum + (s.quantity * s.currentPrice), 0);
+                                const totalPL = currentValue - totalInvestment;
+                                const plPercent = totalInvestment > 0 ? (totalPL / totalInvestment) * 100 : 0;
+
+                                return (
+                                    <SortableDashboardCard {...commonProps} key={id} title="Stock Portfolio" headerAction={
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
+                                                setIsRefreshing(true);
+                                                try {
+                                                    await refreshPortfolio();
+                                                    window.location.href = "/dashboard?refresh=true";
+                                                } catch (e) { toast.error("Refresh failed") }
+                                                finally { setIsRefreshing(false) }
+                                            }} disabled={isRefreshing}>
+                                                <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+                                            </Button>
+                                            <Link href="/stocks" className="text-[10px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full">DETAILS <ArrowUpRight className="h-2.5 w-2.5" /></Link>
+                                        </div>
+                                    }>
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Invested</p><p className="text-lg font-black">₹{totalInvestment.toLocaleString()}</p></div>
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Current</p><p className="text-lg font-black">₹{currentValue.toLocaleString()}</p></div>
+                                            <div className={cn("p-3 rounded-xl border", totalPL >= 0 ? "bg-accent/5 border-accent/20" : "bg-destructive/5 border-destructive/20")}><p className="text-[10px] text-muted-foreground uppercase">Returns</p><p className={cn("text-lg font-black", totalPL >= 0 ? "text-accent" : "text-destructive")}>{totalPL >= 0 ? "+" : ""}₹{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(1)}%)</p></div>
+                                        </div>
+                                    </SortableDashboardCard>
+                                );
+                            }
+
+                            if (id === "funds") {
+                                const totalInvestment = funds.reduce((sum: number, s: any) => sum + (s.quantity * s.avgPrice), 0);
+                                const currentValue = funds.reduce((sum: number, s: any) => sum + (s.quantity * s.currentPrice), 0);
+                                const totalPL = currentValue - totalInvestment;
+                                const plPercent = totalInvestment > 0 ? (totalPL / totalInvestment) * 100 : 0;
+
+                                return (
+                                    <SortableDashboardCard {...commonProps} key={id} title="Mutual Funds Hub" headerAction={
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
+                                                setIsRefreshing(true);
+                                                try {
+                                                    await refreshMFPortfolio();
+                                                    window.location.href = "/dashboard?refresh=true";
+                                                } catch (e) { toast.error("Refresh failed") }
+                                                finally { setIsRefreshing(false) }
+                                            }} disabled={isRefreshing}>
+                                                <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+                                            </Button>
+                                            <Link href="/mutual-funds" className="text-[10px] text-secondary font-bold bg-secondary/10 px-2 py-0.5 rounded-full">DETAILS <ArrowUpRight className="h-2.5 w-2.5" /></Link>
+                                        </div>
+                                    }>
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Invested</p><p className="text-lg font-black">₹{totalInvestment.toLocaleString()}</p></div>
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Current</p><p className="text-lg font-black">₹{currentValue.toLocaleString()}</p></div>
+                                            <div className={cn("p-3 rounded-xl border", totalPL >= 0 ? "bg-accent/5 border-accent/20" : "bg-destructive/5 border-destructive/20")}><p className="text-[10px] text-muted-foreground uppercase">Returns</p><p className={cn("text-lg font-black", totalPL >= 0 ? "text-accent" : "text-destructive")}>{totalPL >= 0 ? "+" : ""}₹{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(1)}%)</p></div>
+                                        </div>
+                                    </SortableDashboardCard>
+                                );
+                            }
+
                             if (id === "stats") {
                                 return (
-                                    <SortableDashboardCard
-                                        {...commonProps}
-                                        key={id}
-                                        title="Financial Performance"
-                                        headerAction={
-                                            <Link href="/expenses" className="text-[10px] text-primary hover:underline flex items-center gap-1 font-bold bg-primary/10 px-2 py-0.5 rounded-full">
-                                                GO TO TRACKER <ArrowUpRight className="h-2.5 w-2.5" />
-                                            </Link>
-                                        }
-                                    >
+                                    <SortableDashboardCard {...commonProps} key={id} title="Financial Summary">
                                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Month Burn</p>
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-xl font-black">₹{stats.currentTotal.toFixed(0)}</p>
-                                                    <div className={cn("text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1", stats.change <= 0 ? "bg-accent/20 text-accent font-bold" : "bg-destructive/20 text-destructive font-bold")}>
-                                                        {stats.change <= 0 ? <TrendingUp className="h-2.5 w-2.5 rotate-180" /> : <TrendingUp className="h-2.5 w-2.5" />}
-                                                        {Math.abs(stats.change).toFixed(0)}%
-                                                    </div>
-                                                </div>
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                                                <p className="text-[10px] text-muted-foreground uppercase">Month Burn</p>
+                                                <p className="text-lg font-black">₹{stats.currentTotal.toLocaleString()}</p>
+                                                <p className={cn("text-[8px] font-bold", stats.change <= 0 ? "text-accent" : "text-destructive")}>
+                                                    {stats.change <= 0 ? "↓" : "↑"}{Math.abs(stats.change).toFixed(0)}% vs last mo
+                                                </p>
                                             </div>
-                                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Top Category</p>
-                                                <p className="text-xl font-black truncate">{stats.topCategory?.name || "N/A"}</p>
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                                                <p className="text-[10px] text-muted-foreground uppercase">Top Category</p>
+                                                <p className="text-lg font-black truncate">{stats.topCategory?.name || "N/A"}</p>
                                             </div>
-                                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Mo Average</p>
-                                                <p className="text-xl font-black">₹{stats.averageTotal.toFixed(0)}</p>
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                                                <p className="text-[10px] text-muted-foreground uppercase">Mo Average</p>
+                                                <p className="text-lg font-black">₹{stats.averageTotal.toLocaleString()}</p>
                                             </div>
-                                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Scope</p>
-                                                <p className="text-xl font-black">{categories.length} <span className="text-xs text-muted-foreground font-normal">CATS</span></p>
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                                                <p className="text-[10px] text-muted-foreground uppercase">Active Categories</p>
+                                                <p className="text-lg font-black">{categories.length}</p>
                                             </div>
                                         </div>
                                     </SortableDashboardCard>
@@ -384,26 +439,14 @@ export default function DashboardClient({ expenses, categories }: any) {
 
                             if (id === "trend") {
                                 return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Spending Velocity (14D)">
-                                        <div className="h-64 mt-2">
+                                    <SortableDashboardCard {...commonProps} key={id} title="Spending Velocity">
+                                        <div className="h-48 mt-2">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <AreaChart data={dailyTrend}>
-                                                    <defs>
-                                                        <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3} />
-                                                            <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} />
-                                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickFormatter={(v) => `₹${v}`} />
-                                                    <Tooltip
-                                                        contentStyle={{ background: "rgba(15, 15, 20, 0.95)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "16px", fontSize: "11px", fontWeight: "bold", color: "#fff" }}
-                                                        itemStyle={{ color: "#fff" }}
-                                                        labelStyle={{ color: "rgba(255,255,255,0.5)" }}
-                                                        cursor={{ stroke: '#7c3aed', strokeWidth: 1.5 }}
-                                                    />
-                                                    <Area type="monotone" dataKey="amount" stroke="#7c3aed" strokeWidth={3} fillOpacity={1} fill="url(#trendGradient)" animationDuration={1000} />
+                                                    <defs><linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3} /><stop offset="95%" stopColor="#7c3aed" stopOpacity={0} /></linearGradient></defs>
+                                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} />
+                                                    <Tooltip contentStyle={{ background: "#000", border: "1px solid #333", borderRadius: "8px", fontSize: "10px" }} />
+                                                    <Area type="monotone" dataKey="amount" stroke="#7c3aed" strokeWidth={2} fill="url(#trendGradient)" />
                                                 </AreaChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -414,23 +457,12 @@ export default function DashboardClient({ expenses, categories }: any) {
                             if (id === "history") {
                                 return (
                                     <SortableDashboardCard {...commonProps} key={id} title="6-Month Pulse">
-                                        <div className="h-64 mt-2">
+                                        <div className="h-48 mt-2">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <RechartsBar data={stats.monthlyData}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} />
-                                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickFormatter={(v) => `₹${v}`} />
-                                                    <Tooltip
-                                                        contentStyle={{ background: "rgba(15, 15, 20, 0.95)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "12px", fontSize: "11px", color: "#fff" }}
-                                                        itemStyle={{ color: "#fff" }}
-                                                        labelStyle={{ color: "rgba(255,255,255,0.5)" }}
-                                                        cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                                                    />
-                                                    <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                                                        {stats.monthlyData.map((_: any, index: number) => (
-                                                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} fillOpacity={0.8} />
-                                                        ))}
-                                                    </Bar>
+                                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} />
+                                                    <Tooltip contentStyle={{ background: "#000", border: "1px solid #333", borderRadius: "8px", fontSize: "10px" }} />
+                                                    <Bar dataKey="amount" fill="#7c3aed" radius={[4, 4, 0, 0]} />
                                                 </RechartsBar>
                                             </ResponsiveContainer>
                                         </div>
@@ -441,32 +473,18 @@ export default function DashboardClient({ expenses, categories }: any) {
                             if (id === "breakdown-pie") {
                                 return (
                                     <SortableDashboardCard {...commonProps} key={id} title="Visual Breakdown">
-                                        <div className="h-64 flex flex-col justify-center items-center relative">
-                                            <div className="h-48 w-full">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <RechartsPie>
-                                                        <Pie
-                                                            data={stats.categoryStats}
-                                                            innerRadius={50}
-                                                            outerRadius={80}
-                                                            paddingAngle={4}
-                                                            dataKey="amount"
-                                                            stroke="none"
-                                                        >
-                                                            {stats.categoryStats.map((entry: any, index: number) => (
-                                                                <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
-                                                            ))}
-                                                        </Pie>
-                                                        <Tooltip
-                                                            contentStyle={{ background: "rgba(15, 15, 20, 0.98)", border: "none", borderRadius: "12px", fontSize: "11px", color: "#fff" }}
-                                                            itemStyle={{ color: "#fff" }}
-                                                        />
-                                                    </RechartsPie>
-                                                </ResponsiveContainer>
-                                            </div>
-                                            <div className="absolute top-[45%] flex flex-col items-center pointer-events-none">
-                                                <span className="text-[10px] text-muted-foreground uppercase font-bold opacity-50">Total</span>
-                                                <span className="text-sm font-black tracking-tight">₹{stats.currentTotal.toFixed(0)}</span>
+                                        <div className="h-48 relative">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <RechartsPie>
+                                                    <Pie data={stats.categoryStats} innerRadius={40} outerRadius={60} paddingAngle={4} dataKey="amount" stroke="none">
+                                                        {stats.categoryStats.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />)}
+                                                    </Pie>
+                                                    <Tooltip />
+                                                </RechartsPie>
+                                            </ResponsiveContainer>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-[8px] text-muted-foreground uppercase font-bold">Total</span>
+                                                <span className="text-xs font-black">₹{stats.currentTotal.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     </SortableDashboardCard>
@@ -476,32 +494,21 @@ export default function DashboardClient({ expenses, categories }: any) {
                             if (id === "breakdown-detailed") {
                                 return (
                                     <SortableDashboardCard {...commonProps} key={id} title="Category Utilization">
-                                        <div className="h-64 overflow-y-auto custom-scrollbar px-1 space-y-4 py-2">
-                                            {stats.categoryStats.length > 0 ? stats.categoryStats.map((cat, i) => {
+                                        <div className="h-48 overflow-y-auto custom-scrollbar space-y-3 py-1">
+                                            {stats.categoryStats.map((cat, i) => {
                                                 const percentage = (cat.amount / stats.currentTotal) * 100 || 0;
                                                 return (
-                                                    <div key={i} className="space-y-1.5">
-                                                        <div className="flex justify-between text-[11px] font-bold">
-                                                            <span className="text-muted-foreground uppercase tracking-tight">{cat.name}</span>
-                                                            <span>₹{cat.amount.toFixed(0)} <span className="text-muted-foreground font-normal ml-0.5">({percentage.toFixed(0)}%)</span></span>
+                                                    <div key={i} className="space-y-1">
+                                                        <div className="flex justify-between text-[10px] font-bold">
+                                                            <span className="text-muted-foreground uppercase">{cat.name}</span>
+                                                            <span>₹{cat.amount.toLocaleString()}</span>
                                                         </div>
-                                                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full rounded-full transition-all duration-1000 ease-out"
-                                                                style={{
-                                                                    width: `${percentage}%`,
-                                                                    background: cat.color || CHART_COLORS[i % CHART_COLORS.length],
-                                                                    boxShadow: `0 0 10px ${cat.color || CHART_COLORS[i % CHART_COLORS.length]}20`
-                                                                }}
-                                                            />
+                                                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                                                            <div className="h-full rounded-full" style={{ width: `${percentage}%`, background: cat.color || CHART_COLORS[i % CHART_COLORS.length] }} />
                                                         </div>
                                                     </div>
                                                 );
-                                            }) : (
-                                                <div className="h-full flex items-center justify-center text-[11px] italic text-muted-foreground opacity-50">
-                                                    No deployment data for current cycle
-                                                </div>
-                                            )}
+                                            })}
                                         </div>
                                     </SortableDashboardCard>
                                 );
@@ -510,25 +517,21 @@ export default function DashboardClient({ expenses, categories }: any) {
                             if (id === "recent") {
                                 return (
                                     <SortableDashboardCard {...commonProps} key={id} title="Activity Stream">
-                                        <div className="space-y-2 mt-2">
-                                            {recentExpenses.length > 0 ? recentExpenses.map((expense: any) => (
-                                                <div key={expense.id} className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all hover:bg-white/[0.05]">
+                                        <div className="space-y-2">
+                                            {recentExpenses.map((expense: any) => (
+                                                <div key={expense.id} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="h-9 w-9 rounded-xl flex items-center justify-center text-lg shadow-inner" style={{ background: expense.category?.color ? `${expense.category.color}20` : "rgba(255,255,255,0.05)" }}>
+                                                        <div className="h-8 w-8 rounded-lg flex items-center justify-center text-sm bg-white/[0.05]">
                                                             {expense.category?.icon || "💰"}
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold leading-none mb-1">{expense.description || expense.category?.name || "Expense"}</p>
-                                                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black opacity-60">
-                                                                {expense.category?.name} • {format(new Date(expense.date), "MMM dd")}
-                                                            </p>
+                                                            <p className="text-[10px] font-bold leading-none mb-1">{expense.description || expense.category?.name}</p>
+                                                            <p className="text-[8px] text-muted-foreground uppercase tracking-widest">{format(new Date(expense.date), "MMM dd")}</p>
                                                         </div>
                                                     </div>
-                                                    <p className="font-black text-xs bg-white/5 px-3 py-1 rounded-lg">₹{Number(expense.amount).toFixed(0)}</p>
+                                                    <p className="font-black text-[10px]">₹{Number(expense.amount).toLocaleString()}</p>
                                                 </div>
-                                            )) : (
-                                                <div className="text-center py-6 text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold italic opacity-30">Null records retrieved</div>
-                                            )}
+                                            ))}
                                         </div>
                                     </SortableDashboardCard>
                                 );
@@ -541,4 +544,3 @@ export default function DashboardClient({ expenses, categories }: any) {
         </div>
     );
 }
-
