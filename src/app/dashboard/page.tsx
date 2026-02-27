@@ -7,12 +7,17 @@ import { getMutualFunds } from "@/app/actions/mutual-funds";
 import { syncUser } from "@/app/actions/user";
 import { redirect } from "next/navigation";
 
+import { syncRecurringEntries } from "@/app/actions/recurring";
+
 export default async function DashboardPage({ searchParams }: { searchParams: { refresh?: string } }) {
     const user = await syncUser();
 
     if (!user) {
         redirect("/auth");
     }
+
+    // Auto-sync recurring entries
+    await syncRecurringEntries();
 
     const expenses = await getExpenses();
     const categories = await getCategories();

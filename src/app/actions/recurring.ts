@@ -1,31 +1,33 @@
-import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { startOfDay, endOfDay, subDays, isSameDay } from "date-fns";
+"use server";
 
-export async function GET(req: Request) {
-    // Security check for Cron (optional)
-    const authHeader = req.headers.get("authorization");
-    if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return new Response("Unauthorized", { status: 401 });
-    }
+import prisma from "@/lib/prisma";
+import { startOfDay, isSameDay } from "date-fns";
+import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
+
+export async function syncRecurringEntries() {
+    const { userId } = auth();
+    if (!userId) return { success: false, error: "Unauthorized" };
 
     try {
         const now = new Date();
         const today = startOfDay(now);
 
-        // 1. Fetch active categories with fixedAmount
+        // Fetch active recurring categories for this user
         const categories = await prisma.category.findMany({
             where: {
+                userId,
                 isActive: true,
                 isRecurring: true,
                 fixedAmount: { not: null },
+                trackingMode: "CALENDAR",
             },
             include: {
                 recurringState: true,
             },
         });
 
-        const results = [];
+        const generated = [];
 
         for (const category of categories) {
             let shouldGenerate = false;
@@ -42,8 +44,14 @@ export async function GET(req: Request) {
                     shouldGenerate = true;
                 }
             } else if (category.frequency === "WEEKLY") {
-                if (!lastGenerated || today.getTime() - lastGenerated.getTime() >= 7 * 24 * 60 * 60 * 1000) {
+                // Check if it's been N weeks since last generated
+                if (!lastGenerated) {
                     shouldGenerate = true;
+                } else {
+                    const diffDays = Math.floor((today.getTime() - lastGenerated.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diffDays >= (category.intervalCount || 1) * 7) {
+                        shouldGenerate = true;
+                    }
                 }
             } else if (category.frequency === "CUSTOM" && category.specificDays.length > 0) {
                 const day = now.getDay();
@@ -51,14 +59,19 @@ export async function GET(req: Request) {
                     shouldGenerate = true;
                 }
             } else if (category.frequency === "MONTHLY") {
-                if (!lastGenerated || today.getMonth() !== lastGenerated.getMonth() || today.getFullYear() !== lastGenerated.getFullYear()) {
+                if (!lastGenerated) {
                     shouldGenerate = true;
+                } else {
+                    const monthDiff = (today.getFullYear() - lastGenerated.getFullYear()) * 12 + (today.getMonth() - lastGenerated.getMonth());
+                    if (monthDiff >= (category.intervalCount || 1)) {
+                        shouldGenerate = true;
+                    }
                 }
             }
 
             if (shouldGenerate && category.fixedAmount) {
                 // Create expense
-                const expense = await prisma.expense.create({
+                await prisma.expense.create({
                     data: {
                         userId: category.userId,
                         categoryId: category.id,
@@ -69,7 +82,7 @@ export async function GET(req: Request) {
                     },
                 });
 
-                // Update state
+                // Update recurring state
                 await prisma.recurringState.upsert({
                     where: { categoryId: category.id },
                     update: { lastGeneratedDate: today },
@@ -79,13 +92,18 @@ export async function GET(req: Request) {
                     },
                 });
 
-                results.push({ category: category.name, amount: category.fixedAmount });
+                generated.push(category.name);
             }
         }
 
-        return NextResponse.json({ success: true, processed: results.length, data: results });
+        if (generated.length > 0) {
+            revalidatePath("/dashboard");
+            revalidatePath("/categories");
+        }
+
+        return { success: true, generatedCount: generated.length, categories: generated };
     } catch (error: any) {
-        console.error("Cron Error:", error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error("Sync Recurring Entries Error:", error);
+        return { success: false, error: error.message };
     }
 }

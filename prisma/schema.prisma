@@ -48,6 +48,7 @@ model Category {
   budgetLimit          Float?            // Used for BUDGET tracking mode
   isEmailEnabled       Boolean           @default(true)
   isActive             Boolean           @default(true)
+  isRecurring          Boolean           @default(false)
   color                String?
   icon                 String?
   sortOrder            Int               @default(0)

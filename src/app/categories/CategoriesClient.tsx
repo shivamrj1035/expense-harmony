@@ -100,6 +100,7 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
         specificDays: [],
         fixedAmount: "",
         budgetLimit: "",
+        isRecurring: false,
         isEmailEnabled: true,
     });
 
@@ -147,6 +148,7 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
             specificDays: [],
             fixedAmount: "",
             budgetLimit: "",
+            isRecurring: false,
             isEmailEnabled: true,
         });
     };
@@ -163,6 +165,7 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
             specificDays: category.specificDays || [],
             fixedAmount: category.fixedAmount?.toString() || "",
             budgetLimit: category.budgetLimit?.toString() || "",
+            isRecurring: category.isRecurring || false,
             isEmailEnabled: category.isEmailEnabled,
         });
         setIsOpen(true);
@@ -302,9 +305,20 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
 
 
 
-                            {formData.trackingMode === "CALENDAR" && (
+                            <div className="flex items-center justify-between rounded-lg bg-muted/30 p-4">
+                                <div>
+                                    <p className="font-medium text-sm">Recurring Entry</p>
+                                    <p className="text-xs text-muted-foreground">Automate entries for this category</p>
+                                </div>
+                                <Switch
+                                    checked={formData.isRecurring}
+                                    onCheckedChange={(checked) => setFormData({ ...formData, isRecurring: checked })}
+                                />
+                            </div>
+
+                            {formData.isRecurring && formData.trackingMode === "CALENDAR" && (
                                 <>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                         <div className="space-y-2">
                                             <Label>Frequency</Label>
                                             <Select
@@ -342,7 +356,7 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
                                     </div>
 
                                     {formData.frequency === "CUSTOM" && (
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                             <Label>Select Days</Label>
                                             <div className="flex gap-1.5">
                                                 {DAYS_OF_WEEK.map((day) => (
@@ -367,8 +381,8 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
                                         </div>
                                     )}
 
-                                    <div className="space-y-2">
-                                        <Label>Fixed Amount per Cycle</Label>
+                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <Label>Fixed Amount per Entry</Label>
                                         <Input
                                             type="number"
                                             step="0.01"
@@ -377,6 +391,7 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
                                             onChange={(e) => setFormData({ ...formData, fixedAmount: e.target.value })}
                                             className="bg-background/50"
                                             placeholder="₹ 0.00"
+                                            required={formData.isRecurring}
                                         />
                                     </div>
                                 </>

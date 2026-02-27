@@ -284,7 +284,7 @@ export default function DashboardClient({
         <div className="space-y-6 max-w-[1400px] mx-auto pb-20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Analytics Hub</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Dashboard - Analytics Hub</h1>
                     <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-[0.2em] mt-0.5">
                         Modular Report Engine • {format(new Date(), "MMMM yyyy")}
                     </p>
