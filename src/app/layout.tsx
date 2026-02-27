@@ -25,6 +25,8 @@ export const viewport = {
     viewportFit: "cover",
 };
 
+import { PageLoader } from "@/components/ui/PageLoader";
+
 export default function RootLayout({
     children,
 }: {
@@ -32,8 +34,8 @@ export default function RootLayout({
 }) {
     return (
         <ClerkProvider
-            signInUrl="/dashboard"
-            signUpUrl="/dashboard"
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
             afterSignOutUrl="/"
         >
             <html lang="en" suppressHydrationWarning>
@@ -53,6 +55,7 @@ export default function RootLayout({
                         enableSystem
                         disableTransitionOnChange
                     >
+                        <PageLoader />
                         {children}
                         <Toaster position="top-right" />
                     </ThemeProvider>
