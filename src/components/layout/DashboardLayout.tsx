@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { UserButton, useUser } from "@clerk/nextjs";
+import { NavLink } from "@/components/NavLink";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -30,8 +31,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="flex flex-col border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-50">
             <div className="h-[env(safe-area-inset-top)]" />
-            <div className="h-16 flex items-center gap-4 px-4 lg:px-6">
+            <div className="h-16 flex items-center gap-4 px-4 lg:px-6 relative">
               <SidebarTrigger className="shrink-0" />
+
+              <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
+                <NavLink
+                  href="/dashboard"
+                  end
+                  className="text-2xl font-black tracking-tighter text-gradient hover:opacity-80 transition-opacity"
+                >
+                  SpendWise
+                </NavLink>
+              </div>
+
               <div className="flex-1" />
               <UserButton afterSignOutUrl="/" />
             </div>

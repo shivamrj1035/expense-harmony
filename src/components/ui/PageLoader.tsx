@@ -1,34 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wallet } from "lucide-react";
+import { useLoading } from "@/components/providers/LoadingProvider";
 
 export function PageLoader() {
-    const pathname = usePathname();
-    const [isVisible, setIsVisible] = useState(false);
-    const [displayPath, setDisplayPath] = useState("");
-
-    useEffect(() => {
-        // Determine section name from pathname
-        const segment = pathname.split("/").filter(Boolean)[0] || "home";
-        const sectionName = segment.charAt(0).toUpperCase() + segment.slice(1);
-
-        // Trigger loader on pathname change
-        setDisplayPath(sectionName);
-        setIsVisible(true);
-
-        const timer = setTimeout(() => {
-            setIsVisible(false);
-        }, 1200); // Animation duration
-
-        return () => clearTimeout(timer);
-    }, [pathname]);
+    const { isLoading, loadingText } = useLoading();
 
     return (
         <AnimatePresence>
-            {isVisible && (
+            {isLoading && (
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -73,9 +54,9 @@ export function PageLoader() {
                                 initial={{ letterSpacing: "1em", opacity: 0 }}
                                 animate={{ letterSpacing: "0.2em", opacity: 1 }}
                                 transition={{ duration: 0.8, ease: "easeOut" }}
-                                className="text-4xl md:text-6xl font-black text-white tracking-widest text-gradient"
+                                className="text-4xl md:text-6xl font-black text-white tracking-widest text-gradient px-4 text-center"
                             >
-                                {displayPath.toUpperCase()}
+                                {(loadingText || "LOADING").toUpperCase()}
                             </motion.span>
 
                             <motion.div

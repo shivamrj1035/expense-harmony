@@ -26,6 +26,7 @@ export const viewport = {
 };
 
 import { PageLoader } from "@/components/ui/PageLoader";
+import { LoadingProvider } from "@/components/providers/LoadingProvider";
 
 export default function RootLayout({
     children,
@@ -55,8 +56,10 @@ export default function RootLayout({
                         enableSystem
                         disableTransitionOnChange
                     >
-                        <PageLoader />
-                        {children}
+                        <LoadingProvider>
+                            <PageLoader />
+                            {children}
+                        </LoadingProvider>
                         <Toaster position="top-right" />
                     </ThemeProvider>
                 </body>
