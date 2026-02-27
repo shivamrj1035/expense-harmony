@@ -62,15 +62,25 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
                     <NavLink
                       href={item.url}
                       end
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      className="group relative flex items-center gap-4 rounded-xl px-4 py-3.5 transition-all duration-300 hover:bg-white/5 active:scale-[0.98]"
+                      activeClassName="bg-primary/10 text-primary"
                     >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {/* Active Indicator Bar */}
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-r-full bg-primary opacity-0 transition-all duration-300 group-[.active]:opacity-100 group-[.active]:h-10 glow-primary" />
+
+                      {/* Active Background Glow */}
+                      <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 transition-all duration-300 group-[.active]:opacity-100" />
+
+                      <item.icon className="relative z-10 h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110 group-[.active]:scale-110" />
+                      {!collapsed && (
+                        <span className="relative z-10 font-medium tracking-wide">
+                          {item.title}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

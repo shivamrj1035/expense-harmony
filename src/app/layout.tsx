@@ -31,7 +31,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ClerkProvider>
+        <ClerkProvider
+            signInUrl="/dashboard"
+            signUpUrl="/dashboard"
+            afterSignOutUrl="/"
+        >
             <html lang="en" suppressHydrationWarning>
                 <head>
                     {/* iOS Splash Screens */}

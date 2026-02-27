@@ -4,45 +4,48 @@
 
 @layer base {
   :root {
-    /* Medium Dark Theme - Less intense than pure black */
-    --background: 240 10% 12%;
+    /* Deep Space Background */
+    --background: 240 15% 5%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 16%;
+    --card: 240 12% 8%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 16%;
+    --popover: 240 12% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 263 84% 65%;
+    /* Neon Violet */
+    --primary: 263 89% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 199 89% 48%;
+    /* Vibrant Cyan */
+    --secondary: 189 94% 43%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 240 10% 22%;
-    --muted-foreground: 240 5% 75%;
+    --muted: 240 10% 12%;
+    --muted-foreground: 240 5% 70%;
 
-    --accent: 173 80% 40%;
+    /* Electric Magenta */
+    --accent: 292 84% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 346 87% 62%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 10% 25%;
-    --input: 240 10% 25%;
-    --ring: 263 84% 65%;
+    --border: 240 10% 15%;
+    --input: 240 10% 15%;
+    --ring: 263 89% 65%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
-    --glass-bg: 240 10% 20% / 0.6;
-    --glass-border: 0 0% 100% / 0.1;
+    --glass-bg: 240 15% 10% / 0.4;
+    --glass-border: 240 10% 20% / 0.5;
 
-    --gradient-primary: linear-gradient(135deg, #7c3aed, #db2777);
-    --gradient-secondary: linear-gradient(135deg, #0ea5e9, #10b981);
-    --gradient-accent: linear-gradient(135deg, #059669, #0ea5e9);
-    --shadow-glow: 0 0 60px -15px rgba(124, 58, 237, 0.4);
-    --shadow-card: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
+    --gradient-primary: linear-gradient(135deg, #7c3aed, #0ea5e9);
+    --gradient-secondary: linear-gradient(135deg, #0ea5e9, #059669);
+    --gradient-accent: linear-gradient(135deg, #7c3aed, #db2777);
+    --shadow-glow: 0 0 80px -20px rgba(124, 58, 237, 0.5);
+    --shadow-card: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -76,11 +79,11 @@
   /* Animated background mesh */
   .mesh-gradient {
     background:
-      radial-gradient(at 40% 20%, hsl(271 91% 65% / 0.12) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, hsl(185 100% 50% / 0.08) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, hsl(340 82% 60% / 0.08) 0px, transparent 50%),
-      radial-gradient(at 80% 50%, hsl(142 76% 56% / 0.05) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, hsl(271 91% 65% / 0.08) 0px, transparent 50%),
+      radial-gradient(at 40% 20%, hsl(263 89% 65% / 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(189 94% 43% / 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(292 84% 60% / 0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, hsl(189 94% 43% / 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsl(263 89% 65% / 0.1) 0px, transparent 50%),
       hsl(var(--background));
   }
 
@@ -89,6 +92,6 @@
   }
 
   .glow-primary {
-    box-shadow: 0 0 40px -10px hsl(271 91% 65% / 0.5);
+    box-shadow: 0 0 40px -10px hsl(263 89% 65% / 0.6);
   }
 }

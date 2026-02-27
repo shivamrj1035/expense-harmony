@@ -11,13 +11,6 @@ const isProtectedRoute = createRouteMatcher([
 const isPublicRoute = createRouteMatcher(["/"]);
 
 export default clerkMiddleware((auth, req) => {
-    const { userId } = auth();
-
-    // If user is logged in and tries to access the landing page, redirect to dashboard
-    if (userId && isPublicRoute(req)) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-
     if (isProtectedRoute(req)) auth().protect();
 });
 
