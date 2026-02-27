@@ -9,6 +9,19 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
     title: "SpendWise - Gen-Z Expense Tracker",
     description: "Track your expenses with style and ease.",
+    manifest: "/manifest.json",
+    appleWebApp: {
+        title: "SpendWise",
+        statusBarStyle: "default",
+        capable: true,
+    },
+    formatDetection: {
+        telephone: false,
+    },
+};
+
+export const viewport = {
+    themeColor: "#000000",
 };
 
 export default function RootLayout({
