@@ -28,10 +28,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="min-h-screen flex w-full mesh-gradient">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 flex items-center gap-4 border-b border-border px-4 lg:px-6 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-            <SidebarTrigger className="shrink-0" />
-            <div className="flex-1" />
-            <UserButton afterSignOutUrl="/auth" />
+          <header className="flex flex-col border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-50">
+            <div className="h-[env(safe-area-inset-top)]" />
+            <div className="h-16 flex items-center gap-4 px-4 lg:px-6">
+              <SidebarTrigger className="shrink-0" />
+              <div className="flex-1" />
+              <UserButton afterSignOutUrl="/" />
+            </div>
           </header>
           <main className="flex-1 overflow-auto p-4 lg:p-6 custom-scrollbar">
             {children}

@@ -41,13 +41,16 @@ export function AppSidebar() {
       className={collapsed ? "w-16" : "w-64"}
       collapsible="icon"
     >
-      <div className="flex h-16 items-center gap-3 px-4 border-b border-sidebar-border">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary">
-          <Wallet className="h-5 w-5 text-primary-foreground" />
+      <div className="flex flex-col border-b border-sidebar-border">
+        <div className="h-[env(safe-area-inset-top)]" />
+        <div className="flex h-16 items-center gap-3 px-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary">
+            <Wallet className="h-5 w-5 text-primary-foreground" />
+          </div>
+          {!collapsed && (
+            <span className="font-bold text-lg text-gradient">SpendWise</span>
+          )}
         </div>
-        {!collapsed && (
-          <span className="font-bold text-lg text-gradient">SpendWise</span>
-        )}
       </div>
 
       <SidebarContent className="custom-scrollbar">
