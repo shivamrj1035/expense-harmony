@@ -17,7 +17,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     }
 
     // Auto-sync recurring entries
-    await syncRecurringEntries();
+    const syncResult = await syncRecurringEntries();
 
     const expenses = await getExpenses();
     const categories = await getCategories();
@@ -34,6 +34,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 funds={funds}
                 showStocksInSummary={user.showStocksInSummary}
                 showMutualFundsInSummary={user.showMutualFundsInSummary}
+                syncResult={syncResult}
             />
         </DashboardLayout>
     );

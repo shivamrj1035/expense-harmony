@@ -7,6 +7,7 @@ const withPWA = withPWAInit({
     reloadOnOnline: true,
     swMinify: true,
     disable: process.env.NODE_ENV === "development",
+    customWorkerDir: "src/worker",
     workboxOptions: {
         disableDevLogs: true,
     },

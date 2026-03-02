@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { NavLink } from "@/components/NavLink";
+import { PushNotificationManager } from "@/components/notifications/PushNotificationManager";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -53,6 +54,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </main>
         </div>
       </div>
+      <PushNotificationManager />
     </SidebarProvider>
   );
 }

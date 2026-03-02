@@ -25,8 +25,8 @@
     --muted: 240 10% 12%;
     --muted-foreground: 240 5% 70%;
 
-    /* Electric Magenta */
-    --accent: 292 84% 60%;
+    /* Emerald Green */
+    --accent: 142 71% 45%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -43,7 +43,7 @@
 
     --gradient-primary: linear-gradient(135deg, #7c3aed, #0ea5e9);
     --gradient-secondary: linear-gradient(135deg, #0ea5e9, #059669);
-    --gradient-accent: linear-gradient(135deg, #7c3aed, #db2777);
+    --gradient-accent: linear-gradient(135deg, #059669, #10b981);
     --shadow-glow: 0 0 80px -20px rgba(124, 58, 237, 0.5);
     --shadow-card: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
   }
@@ -81,7 +81,7 @@
     background:
       radial-gradient(at 40% 20%, hsl(263 89% 65% / 0.15) 0px, transparent 50%),
       radial-gradient(at 80% 0%, hsl(189 94% 43% / 0.1) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, hsl(292 84% 60% / 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(142 71% 45% / 0.1) 0px, transparent 50%),
       radial-gradient(at 80% 50%, hsl(189 94% 43% / 0.08) 0px, transparent 50%),
       radial-gradient(at 0% 100%, hsl(263 89% 65% / 0.1) 0px, transparent 50%),
       hsl(var(--background));

@@ -23,6 +23,7 @@ model User {
   expenses        Expense[]
   stocks          Stock[]
   mutualFunds     MutualFund[]
+  pushSubscriptions PushSubscription[]
 }
 
 enum ReportFrequency {
@@ -104,4 +105,14 @@ model MutualFund {
   quantity        Float
   avgPrice        Float    // Purchase Price / Average NAV
   createdAt       DateTime @default(now())
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

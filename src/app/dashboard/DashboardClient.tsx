@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/glass-card";
 import {
@@ -80,8 +80,20 @@ export default function DashboardClient({
     funds = [],
     showStocksInSummary,
     showMutualFundsInSummary,
+    syncResult,
 }: any) {
     const router = useRouter();
+
+    useEffect(() => {
+        if (syncResult?.success && syncResult.categories?.length > 0) {
+            syncResult.categories.forEach((catName: string) => {
+                toast.success(`Auto-generated: ${catName}`, {
+                    description: `Recurring entry completed for today`,
+                    icon: "🤖",
+                });
+            });
+        }
+    }, [syncResult]);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [widgets, setWidgets] = useState(() => {
         let currentWidgets: any[] = [];

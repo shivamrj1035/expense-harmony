@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { startOfDay, isSameDay } from "date-fns";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { sendPushNotification } from "./notifications";
 
 export async function syncRecurringEntries() {
     const { userId } = auth();
@@ -99,11 +100,23 @@ export async function syncRecurringEntries() {
         if (generated.length > 0) {
             revalidatePath("/dashboard");
             revalidatePath("/categories");
+
+            // Send real push notification
+            await sendPushNotification(
+                userId,
+                "Recurring Entries Marked 🤖",
+                `Automatically marked: ${generated.join(", ")}`,
+                "/dashboard"
+            );
         }
 
-        return { success: true, generatedCount: generated.length, categories: generated };
+        return {
+            success: true,
+            generatedCount: generated.length,
+            categories: generated
+        };
     } catch (error: any) {
         console.error("Sync Recurring Entries Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, generatedCount: 0, categories: [] };
     }
 }
