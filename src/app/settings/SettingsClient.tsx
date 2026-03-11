@@ -12,10 +12,12 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { updateUserSettings } from "@/app/actions/user";
+import { testPushNotification, subscribeToPush } from "@/app/actions/notifications";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
-import { Moon, Sun, Bell, Globe, Mail, LayoutDashboard, TrendingUp, PieChart } from "lucide-react";
+import { Moon, Sun, Bell, Globe, Mail, LayoutDashboard, TrendingUp, PieChart, Wallet, Clock } from "lucide-react";
 
 export default function SettingsClient({ user }: { user: any }) {
     const { theme, setTheme } = useTheme();
@@ -23,7 +25,63 @@ export default function SettingsClient({ user }: { user: any }) {
     const [formData, setFormData] = useState({
         reportFrequency: user.reportFrequency,
         reportDay: user.reportDay.toString(),
+        monthlyExpenseLimit: user.monthlyExpenseLimit?.toString() || "0",
+        manualBalance: user.manualBalance?.toString() || "0",
+        recurringSyncTime: user.recurringSyncTime || "00:00",
     });
+
+    const handleTestNotification = async () => {
+        if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+            toast.error("This browser does not support push notifications.");
+            return;
+        }
+        
+        if (Notification.permission !== "granted") {
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+                toast.error("Please allow notification permissions to test.");
+                return;
+            }
+        }
+
+        toast.promise(
+            (async () => {
+                const registration = await navigator.serviceWorker.ready;
+                let sub = await registration.pushManager.getSubscription();
+
+                if (!sub) {
+                    const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                    if (!VAPID_PUBLIC_KEY) throw new Error("Push notification configuration is missing on client.");
+
+                    const padding = "=".repeat((4 - (VAPID_PUBLIC_KEY.length % 4)) % 4);
+                    const base64 = (VAPID_PUBLIC_KEY + padding).replace(/-/g, "+").replace(/_/g, "/");
+                    const rawData = window.atob(base64);
+                    const outputArray = new Uint8Array(rawData.length);
+                    for (let i = 0; i < rawData.length; ++i) {
+                        outputArray[i] = rawData.charCodeAt(i);
+                    }
+
+                    sub = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: outputArray,
+                    });
+
+                    const subResult = await subscribeToPush(JSON.parse(JSON.stringify(sub)));
+                    if (!subResult.success) throw new Error(subResult.error || "Failed to save push subscription.");
+                }
+
+                const res = await testPushNotification();
+                if(!res.success) throw new Error(res.error || "Failed to trigger test notification");
+                if (res.sent === 0) throw new Error("No active push subscriptions found. Please enable notifications for this site first.");
+                return res;
+            })(),
+            {
+                loading: 'Testing push notification...',
+                success: 'Notification sent! Check your device.',
+                error: (err) => err.message || 'Failed to send notification.'
+            }
+        );
+    };
 
     const handleSave = async () => {
         setLoading(true);
@@ -31,6 +89,9 @@ export default function SettingsClient({ user }: { user: any }) {
             await updateUserSettings({
                 reportFrequency: formData.reportFrequency,
                 reportDay: parseInt(formData.reportDay),
+                monthlyExpenseLimit: parseFloat(formData.monthlyExpenseLimit) || 0,
+                manualBalance: parseFloat(formData.manualBalance) || 0,
+                recurringSyncTime: formData.recurringSyncTime,
             });
             toast.success("Settings saved");
         } catch (error) {
@@ -130,6 +191,56 @@ export default function SettingsClient({ user }: { user: any }) {
 
                 <GlassCard className="p-6 space-y-6">
                     <div className="flex items-center gap-3">
+                        <Wallet className="h-5 w-5 text-accent" />
+                        <h3 className="font-semibold">Financial Configuration</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Monthly Expense Limit</Label>
+                            <Input
+                                type="number"
+                                placeholder="e.g. 20000"
+                                value={formData.monthlyExpenseLimit}
+                                onChange={(e) => setFormData({ ...formData, monthlyExpenseLimit: e.target.value })}
+                                className="bg-background/50"
+                            />
+                            <p className="text-xs text-muted-foreground">The maximum amount you intend to spend each month.</p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Current Balance</Label>
+                            <Input
+                                type="number"
+                                placeholder="e.g. 50000"
+                                value={formData.manualBalance}
+                                onChange={(e) => setFormData({ ...formData, manualBalance: e.target.value })}
+                                className="bg-background/50"
+                            />
+                            <p className="text-xs text-muted-foreground">Manually update this at the start of each month.</p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                Recurring Entry Time
+                            </Label>
+                            <Input
+                                type="time"
+                                value={formData.recurringSyncTime}
+                                onChange={(e) => setFormData({ ...formData, recurringSyncTime: e.target.value })}
+                                className="bg-background/50"
+                            />
+                            <p className="text-xs text-muted-foreground">The default time of day when auto-generated expenses are logged.</p>
+                        </div>
+                        <Button onClick={handleSave} className="w-full bg-gradient-primary" disabled={loading}>
+                            {loading ? "Saving..." : "Save Financial Settings"}
+                        </Button>
+                    </div>
+                </GlassCard>
+
+                <GlassCard className="p-6 space-y-6">
+                    <div className="flex items-center gap-3">
                         <Globe className="h-5 w-5 text-accent" />
                         <h3 className="font-semibold">Preferences</h3>
                     </div>
@@ -197,12 +308,20 @@ export default function SettingsClient({ user }: { user: any }) {
                     </div>
                 </GlassCard>
 
-                <GlassCard className="p-6 space-y-6 opacity-60">
+                <GlassCard className="p-6 space-y-6">
                     <div className="flex items-center gap-3">
-                        <Bell className="h-5 w-5 text-destructive" />
+                        <Bell className="h-5 w-5 text-accent" />
                         <h3 className="font-semibold">Notifications</h3>
                     </div>
-                    <p className="text-sm text-muted-foreground italic">Mobile push notifications coming soon...</p>
+                    
+                    <div className="space-y-4">
+                        <div className="flex flex-col gap-2">
+                            <p className="text-sm text-muted-foreground">Test your device's push notification receiver to ensure you get alerts for auto-generated recurring expenses.</p>
+                            <Button variant="outline" onClick={handleTestNotification} className="w-full sm:w-auto mt-2">
+                                Test Push Notification
+                            </Button>
+                        </div>
+                    </div>
                 </GlassCard>
             </div>
         </div>

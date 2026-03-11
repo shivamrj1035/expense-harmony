@@ -21,20 +21,40 @@ import {
   Settings,
   Wallet,
   PieChart,
+  CircleDollarSign,
 } from "lucide-react";
-
-const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Expenses", url: "/expenses", icon: Receipt },
-  { title: "Categories", url: "/categories", icon: FolderOpen },
-  { title: "Stock Analysis", url: "/stocks", icon: BarChart3 },
-  { title: "Mutual Funds", url: "/mutual-funds", icon: PieChart },
-  { title: "Settings", url: "/settings", icon: Settings },
-];
+import { usePrivacyStore } from "@/store/privacyStore";
+import { useState, useEffect } from "react";
+import { getUserSettings } from "@/app/actions/user";
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const { isPrivacyUnlocked } = usePrivacyStore();
+  const [isPrivacyEnabled, setIsPrivacyEnabled] = useState(false);
   const collapsed = state === "collapsed";
+
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const settings = await getUserSettings();
+        setIsPrivacyEnabled(!!settings?.isPrivacyEnabled);
+      } catch (error) {
+        console.error("Failed to fetch privacy settings:", error);
+      }
+    }
+    fetchSettings();
+  }, []);
+
+  const isPrivacyActive = isPrivacyEnabled && !isPrivacyUnlocked;
+
+  const menuItems = [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Expenses", url: "/expenses", icon: Receipt },
+    { title: "Categories", url: "/categories", icon: FolderOpen },
+    { title: "Stock Analysis", url: "/stocks", icon: BarChart3, hideOnPrivacy: true },
+    { title: "Mutual Funds", url: "/mutual-funds", icon: PieChart, hideOnPrivacy: true },
+    { title: "Settings", url: "/settings", icon: Settings },
+  ].filter(item => !(isPrivacyActive && item.hideOnPrivacy));
 
   return (
     <Sidebar

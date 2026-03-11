@@ -20,6 +20,16 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Edit, FolderOpen, Power, Mail, Calendar } from "lucide-react";
 import { createCategory, updateCategory, deleteCategory, reorderCategories } from "@/app/actions/categories";
 import { sendCategoryReport } from "@/app/actions/reports";
@@ -78,6 +88,7 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
     const [categories, setCategories] = useState(initialCategories);
     const [isOpen, setIsOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any | null>(null);
+    const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const sensors = useSensors(
@@ -180,11 +191,12 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure? This will delete all associated expenses.")) return;
+    const handleDelete = async () => {
+        if (!categoryToDelete) return;
         try {
-            await deleteCategory(id);
+            await deleteCategory(categoryToDelete);
             toast.success("Category deleted");
+            setCategoryToDelete(null);
         } catch (error) {
             toast.error("Failed to delete category");
         }
@@ -480,7 +492,7 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
                                     category={category}
                                     openEdit={openEdit}
                                     handleToggleActive={handleToggleActive}
-                                    handleDelete={handleDelete}
+                                    handleDelete={setCategoryToDelete}
                                     setReportingCategory={setReportingCategory}
                                     setReportDialogOpen={setReportDialogOpen}
                                 />
@@ -495,6 +507,26 @@ export default function CategoriesClient({ initialCategories }: { initialCategor
                     </GlassCard>
                 )}
             </DndContext>
+
+            {/* Custom UI Delete Alert */}
+            <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => {
+                if (!open) setCategoryToDelete(null);
+            }}>
+                <AlertDialogContent className="glass-card border-border">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Category?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure? This action cannot be undone. This will delete all associated expenses as well.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

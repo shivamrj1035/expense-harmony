@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { format, isSameMonth } from "date-fns";
+import { isSameMonth } from "date-fns";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronRight } from "lucide-react";
+import { Plus, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useDateStore } from "@/store/useDateStore";
 
 interface BudgetGroupCardProps {
     categories: any[];
@@ -14,6 +16,7 @@ interface BudgetGroupCardProps {
 }
 
 export function BudgetGroupCard({ categories, expenses, onAddExpense }: BudgetGroupCardProps) {
+    const { selectedMonth } = useDateStore();
     const budgetCategories = useMemo(() =>
         categories.filter(c => c.trackingMode === "BUDGET" && c.isActive),
         [categories]);
@@ -21,27 +24,22 @@ export function BudgetGroupCard({ categories, expenses, onAddExpense }: BudgetGr
     if (budgetCategories.length === 0) return null;
 
     return (
-        <GlassCard className="p-0 overflow-hidden flex flex-col min-h-fit border-primary/20 bg-primary/5">
-            <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
-                        B
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-sm">Budget Group</h3>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-tight">Irregular Expenses</p>
-                    </div>
+        <GlassCard className="p-4 sm:p-6 overflow-hidden">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold">
+                    <Target className="h-5 w-5" />
                 </div>
-                <div className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                    {budgetCategories.length} CATEGORIES
+                <div>
+                    <h3 className="font-bold text-lg">Budget Tracker</h3>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest">{budgetCategories.length} Irregular Expenses Categories</p>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 max-h-[210px]">
+            <div className="md:hidden space-y-4">
                 {budgetCategories.map(cat => {
                     const monthExpenses = expenses.filter(e =>
                         e.categoryId === cat.id &&
-                        isSameMonth(new Date(e.date), new Date())
+                        isSameMonth(new Date(e.date), selectedMonth)
                     );
                     const totalSpent = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
                     const limit = cat.budgetLimit || 0;
@@ -49,36 +47,24 @@ export function BudgetGroupCard({ categories, expenses, onAddExpense }: BudgetGr
                     const isOver = totalSpent > limit;
 
                     return (
-                        <div key={cat.id} className="p-3 rounded-xl bg-background/40 border border-white/5 space-y-2 group transition-all hover:bg-background/60">
+                        <div key={cat.id} className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
                             <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-lg">{cat.icon}</span>
-                                    <span className="text-sm font-semibold">{cat.name}</span>
+                                <div className="flex gap-3 items-center">
+                                    <span className="text-2xl">{cat.icon}</span>
+                                    <span className="font-semibold">{cat.name}</span>
                                 </div>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => onAddExpense(cat.id)}
-                                >
+                                <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-white/10" onClick={() => onAddExpense(cat.id)}>
                                     <Plus className="h-4 w-4" />
                                 </Button>
                             </div>
-
                             <div className="space-y-1">
-                                <div className="flex justify-between text-[10px]">
-                                    <span className="text-muted-foreground">Spent ₹{totalSpent.toFixed(0)}</span>
-                                    <span className={cn(
-                                        "font-bold",
-                                        isOver ? "text-destructive" : "text-primary"
-                                    )}>Limit ₹{limit.toFixed(0)}</span>
+                                <div className="flex justify-between text-sm">
+                                    <span className={cn("font-bold", isOver ? "text-destructive" : "text-primary")}>₹{totalSpent.toFixed(0)}</span>
+                                    <span className="text-muted-foreground">/ ₹{limit.toFixed(0)}</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-muted/30 rounded-full overflow-hidden">
                                     <div
-                                        className={cn(
-                                            "h-full transition-all duration-500",
-                                            isOver ? "bg-destructive" : "bg-primary"
-                                        )}
+                                        className={cn("h-full transition-all duration-500", isOver ? "bg-destructive" : percentage >= 80 ? "bg-orange-500" : "bg-primary")}
                                         style={{ width: `${Math.min(percentage, 100)}%` }}
                                     />
                                 </div>
@@ -88,10 +74,70 @@ export function BudgetGroupCard({ categories, expenses, onAddExpense }: BudgetGr
                 })}
             </div>
 
-            <div className="p-3 bg-white/5 border-t border-white/10 mt-auto">
-                <p className="text-[9px] text-muted-foreground text-center italic">
-                    Categories with BUDGET tracking mode are consolidated here.
-                </p>
+            <div className="hidden md:block rounded-xl border border-border overflow-hidden custom-scrollbar overflow-x-auto">
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow>
+                            <TableHead className="w-[200px]">Category</TableHead>
+                            <TableHead>Utilization</TableHead>
+                            <TableHead className="text-right w-[150px]">Spent / Limit</TableHead>
+                            <TableHead className="w-[80px]"></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {budgetCategories.map(cat => {
+                            const monthExpenses = expenses.filter(e =>
+                                e.categoryId === cat.id &&
+                                isSameMonth(new Date(e.date), selectedMonth)
+                            );
+                            const totalSpent = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+                            const limit = cat.budgetLimit || 0;
+                            const percentage = limit > 0 ? (totalSpent / limit) * 100 : 0;
+                            const isOver = totalSpent > limit;
+
+                            return (
+                                <TableRow key={cat.id} className="hover:bg-muted/30 transition-colors">
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl">{cat.icon}</span>
+                                            <span className="font-semibold">{cat.name}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="space-y-1 w-full max-w-[300px]">
+                                            <div className="flex justify-between text-[10px] font-bold">
+                                                <span>{Math.min(percentage, 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-muted/30 rounded-full overflow-hidden">
+                                                <div
+                                                    className={cn(
+                                                        "h-full transition-all duration-500",
+                                                        isOver ? "bg-destructive" : percentage >= 80 ? "bg-orange-500" : "bg-primary"
+                                                    )}
+                                                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right whitespace-nowrap">
+                                        <span className={cn("font-bold", isOver ? "text-destructive" : "text-primary")}>₹{totalSpent.toFixed(0)}</span>
+                                        <span className="text-muted-foreground text-xs ml-1">/ ₹{limit.toFixed(0)}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                            onClick={() => onAddExpense(cat.id)}
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
             </div>
         </GlassCard>
     );

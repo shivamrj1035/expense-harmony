@@ -57,6 +57,26 @@
   body {
     @apply bg-background text-foreground antialiased selection:bg-primary/30;
   }
+
+  /* Global Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(124, 58, 237, 0.4);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 58, 237, 0.7);
+  }
 }
 
 @layer components {
@@ -93,5 +113,32 @@
 
   .glow-primary {
     box-shadow: 0 0 40px -10px hsl(263 89% 65% / 0.6);
+  }
+
+  /* Themed Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(124, 58, 237, 0.5); /* Primary Violet matches theme */
+    border-radius: 10px;
+    transition: background 0.3s ease;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 58, 237, 0.8);
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+  }
+  
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(124, 58, 237, 0.5) rgba(255, 255, 255, 0.02);
   }
 }

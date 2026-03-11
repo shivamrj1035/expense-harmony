@@ -46,7 +46,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { SortableDashboardCard } from "@/components/dashboard/SortableDashboardCard";
-import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfWeek, endOfWeek, isSameMonth } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -59,10 +59,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { usePrivacyStore } from "@/store/privacyStore";
+import { useDateStore } from "@/store/useDateStore";
 import { refreshPortfolio } from "@/app/actions/stocks";
 import { refreshMFPortfolio } from "@/app/actions/mutual-funds";
 import { toast } from "sonner";
 import { sendMonthlyAnalysisReport } from "@/app/actions/hub-reports";
+import { updateUserSettings } from "@/app/actions/user";
 
 const CHART_COLORS = [
     "#7c3aed",
@@ -81,8 +85,13 @@ export default function DashboardClient({
     showStocksInSummary,
     showMutualFundsInSummary,
     syncResult,
+    userSettings,
 }: any) {
     const router = useRouter();
+    const { isPrivacyUnlocked } = usePrivacyStore();
+    const { selectedMonth } = useDateStore();
+
+    const isPrivacyActive = userSettings?.isPrivacyEnabled && !isPrivacyUnlocked;
 
     useEffect(() => {
         if (syncResult?.success && syncResult.categories?.length > 0) {
@@ -140,6 +149,49 @@ export default function DashboardClient({
     const [reportMonth, setReportMonth] = useState(format(new Date(), "yyyy-MM"));
     const [sendingReport, setSendingReport] = useState(false);
 
+    // Budget Prompt State
+    const [budgetPromptOpen, setBudgetPromptOpen] = useState(false);
+    const [newBudgetTarget, setNewBudgetTarget] = useState(userSettings?.monthlyExpenseLimit?.toString() || "");
+    const [savingBudget, setSavingBudget] = useState(false);
+
+    useEffect(() => {
+        const today = new Date();
+        const currentMonthString = format(today, "yyyy-MM");
+        
+        // Only trigger on the 1st of the month, and only if not already prompted this month
+        if (today.getDate() === 1 && userSettings?.lastBudgetPromptMonth !== currentMonthString) {
+            setBudgetPromptOpen(true);
+        }
+    }, [userSettings]);
+
+    const handleSaveMonthlyBudget = async () => {
+        setSavingBudget(true);
+        try {
+            await updateUserSettings({
+                monthlyExpenseLimit: parseFloat(newBudgetTarget) || 0,
+                lastBudgetPromptMonth: format(new Date(), "yyyy-MM"),
+            });
+            toast.success("Monthly budget set!");
+            setBudgetPromptOpen(false);
+            window.location.reload();
+        } catch (error) {
+            toast.error("Failed to set budget.");
+        } finally {
+            setSavingBudget(false);
+        }
+    };
+
+    const handleDismissBudgetPrompt = async () => {
+        try {
+            await updateUserSettings({ lastBudgetPromptMonth: format(new Date(), "yyyy-MM") });
+            setBudgetPromptOpen(false);
+            // We do a soft dismiss without reloading
+        } catch (error) {
+            // Ignore failure on dismiss
+            setBudgetPromptOpen(false); 
+        }
+    };
+
     const handleSendHubReport = async () => {
         setSendingReport(true);
         try {
@@ -159,15 +211,15 @@ export default function DashboardClient({
     );
 
     const stats = useMemo(() => {
-        const now = new Date();
-        const currentMonthStart = startOfMonth(now);
-        const currentMonthEnd = endOfMonth(now);
-        const lastMonthStart = startOfMonth(subMonths(now, 1));
-        const lastMonthEnd = endOfMonth(subMonths(now, 1));
+        const currentMonthStart = startOfMonth(selectedMonth);
+        const currentMonthEnd = endOfMonth(selectedMonth);
+        const lastMonthStart = startOfMonth(subMonths(selectedMonth, 1));
+        const lastMonthEnd = endOfMonth(subMonths(selectedMonth, 1));
 
+        // Expenses
         const currentMonthExpenses = expenses.filter((e: any) => {
             const date = new Date(e.date);
-            return isWithinInterval(date, { start: currentMonthStart, end: currentMonthEnd });
+            return isSameMonth(date, selectedMonth);
         });
 
         const lastMonthExpenses = expenses.filter((e: any) => {
@@ -178,9 +230,10 @@ export default function DashboardClient({
         const currentTotal = currentMonthExpenses.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
         const lastTotal = lastMonthExpenses.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
 
+        // Income vs Expense Chart (Last 6 Months relative to selectedMonth)
         const monthlyData: { month: string; amount: number }[] = [];
         for (let i = 5; i >= 0; i--) {
-            const monthDate = subMonths(now, i);
+            const monthDate = subMonths(selectedMonth, i);
             const mStart = startOfMonth(monthDate);
             const mEnd = endOfMonth(monthDate);
             const mTotal = expenses
@@ -225,30 +278,33 @@ export default function DashboardClient({
             categoryStats,
             topCategory,
         };
-    }, [expenses]);
+    }, [expenses, userSettings, selectedMonth]);
 
     const dailyTrend = useMemo(() => {
-        const now = new Date();
+        const daysInMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate();
         const days: Record<string, number> = {};
-        for (let i = 14; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i);
+        
+        for (let i = 1; i <= daysInMonth; i++) {
+            const date = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), i);
             const key = format(date, "MMM dd");
             days[key] = 0;
         }
+
         expenses.forEach((expense: any) => {
             const date = new Date(expense.date);
-            const key = format(date, "MMM dd");
-            if (days.hasOwnProperty(key)) {
-                days[key] += Number(expense.amount);
+            if (isSameMonth(date, selectedMonth)) {
+                const key = format(date, "MMM dd");
+                if (days.hasOwnProperty(key)) {
+                    days[key] += Number(expense.amount);
+                }
             }
         });
         return Object.entries(days).map(([date, amount]) => ({ date, amount }));
-    }, [expenses]);
+    }, [expenses, selectedMonth]);
 
     const recentExpenses = useMemo(() => {
-        return expenses.slice(0, 6);
-    }, [expenses]);
+        return expenses.filter((e: any) => isSameMonth(new Date(e.date), selectedMonth)).slice(0, 5);
+    }, [expenses, selectedMonth]);
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -298,7 +354,7 @@ export default function DashboardClient({
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Dashboard - Analytics Hub</h1>
                     <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-[0.2em] mt-0.5">
-                        Modular Report Engine • {format(new Date(), "MMMM yyyy")}
+                        Modular Report Engine • {format(selectedMonth, "MMMM yyyy")}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -340,6 +396,53 @@ export default function DashboardClient({
                                 >
                                     {sendingReport ? "Generating..." : "Dispatch Report"}
                                 </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Monthly Budget Prompt Dialog */}
+                    <Dialog open={budgetPromptOpen} onOpenChange={(open) => {
+                        if (!open) handleDismissBudgetPrompt()
+                    }}>
+                        <DialogContent className="glass-card border-border sm:max-w-[400px]">
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Wallet className="h-5 w-5 text-accent" />
+                                    New Month, New Budget!
+                                </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-6 pt-4">
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    It's the start of a new month! Want to review or update your monthly expense limit to keep your spending on track?
+                                </p>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">
+                                        Expense Limit (₹)
+                                    </Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="E.g. 20000"
+                                        value={newBudgetTarget}
+                                        onChange={(e) => setNewBudgetTarget(e.target.value)}
+                                        className="bg-white/5 border-white/10 h-10 font-bold"
+                                    />
+                                </div>
+                                <div className="flex gap-2 w-full pt-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleDismissBudgetPrompt}
+                                        className="flex-1 h-10 text-xs font-bold uppercase"
+                                    >
+                                        Skip
+                                    </Button>
+                                    <Button
+                                        onClick={handleSaveMonthlyBudget}
+                                        className="flex-1 bg-gradient-primary hover:opacity-90 h-10 text-xs font-bold uppercase"
+                                        disabled={savingBudget}
+                                    >
+                                        {savingBudget ? "Saving..." : "Set Budget"}
+                                    </Button>
+                                </div>
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -437,12 +540,24 @@ export default function DashboardClient({
                                                 <p className="text-lg font-black truncate">{stats.topCategory?.name || "N/A"}</p>
                                             </div>
                                             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                                <p className="text-[10px] text-muted-foreground uppercase">Mo Average</p>
-                                                <p className="text-lg font-black">₹{stats.averageTotal.toLocaleString()}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase">Budget Status</p>
+                                                <p className="text-lg font-black">
+                                                    {userSettings?.monthlyExpenseLimit ? `₹${Math.max(0, userSettings.monthlyExpenseLimit - stats.currentTotal).toLocaleString()} left` : "No Limit"}
+                                                </p>
+                                                {userSettings?.monthlyExpenseLimit && (
+                                                    <div className="mt-1.5 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className={cn("h-full rounded-full", (stats.currentTotal / userSettings.monthlyExpenseLimit) > 0.9 ? "bg-destructive" : "bg-primary")} 
+                                                            style={{ width: `${Math.min(100, (stats.currentTotal / userSettings.monthlyExpenseLimit) * 100)}%` }} 
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                                <p className="text-[10px] text-muted-foreground uppercase">Active Categories</p>
-                                                <p className="text-lg font-black">{categories.length}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase">Current Balance</p>
+                                                <p className="text-lg font-black truncate">
+                                                    {isPrivacyActive ? "₹****" : `₹${(userSettings?.manualBalance || 0).toLocaleString()}`}
+                                                </p>
                                             </div>
                                         </div>
                                     </SortableDashboardCard>

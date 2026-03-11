@@ -95,3 +95,21 @@ export async function sendPushNotification(userId: string, title: string, body: 
         sent: results.filter(r => r.status === "fulfilled").length
     };
 }
+
+export async function testPushNotification() {
+    const { userId } = auth();
+    if (!userId) return { success: false, error: "Unauthorized" };
+
+    try {
+        const result = await sendPushNotification(
+            userId,
+            "Test Notification 🚀",
+            "This is a test push notification from SpendWise! Your notifications are working.",
+            "/dashboard"
+        );
+        return result;
+    } catch (error: any) {
+        console.error("Test Push Error:", error);
+        return { success: false, error: error.message };
+    }
+}

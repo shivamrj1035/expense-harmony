@@ -42,6 +42,10 @@ export async function updateUserSettings(data: {
     reportDay?: number;
     showStocksInSummary?: boolean;
     showMutualFundsInSummary?: boolean;
+    monthlyExpenseLimit?: number;
+    manualBalance?: number;
+    lastBudgetPromptMonth?: string;
+    recurringSyncTime?: string;
 }) {
     const { userId } = auth();
     if (!userId) throw new Error("Unauthorized");

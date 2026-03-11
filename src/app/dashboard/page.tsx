@@ -35,6 +35,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 showStocksInSummary={user.showStocksInSummary}
                 showMutualFundsInSummary={user.showMutualFundsInSummary}
                 syncResult={syncResult}
+                userSettings={user}
             />
         </DashboardLayout>
     );

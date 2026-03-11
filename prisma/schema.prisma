@@ -23,6 +23,12 @@ model User {
   expenses        Expense[]
   stocks          Stock[]
   mutualFunds     MutualFund[]
+  privacyPin      String?
+  isPrivacyEnabled Boolean         @default(false)
+  manualBalance   Float?
+  monthlyExpenseLimit Float?       @default(0)
+  lastBudgetPromptMonth String?
+  recurringSyncTime   String       @default("00:00")
   pushSubscriptions PushSubscription[]
 }
 
@@ -116,3 +122,4 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
+

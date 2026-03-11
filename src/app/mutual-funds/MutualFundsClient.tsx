@@ -28,6 +28,16 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Command,
     CommandEmpty,
     CommandGroup,
@@ -44,6 +54,7 @@ export default function MutualFundsClient({ initialFunds }: { initialFunds: any[
     const [funds, setFunds] = useState(initialFunds);
     const [editingFund, setEditingFund] = useState<any>(null);
     const [isAdding, setIsAdding] = useState(false);
+    const [fundToDelete, setFundToDelete] = useState<string | null>(null);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -165,12 +176,13 @@ export default function MutualFundsClient({ initialFunds }: { initialFunds: any[
         }
     };
 
-    const handleDeleteFund = async (id: string) => {
-        if (!confirm("Are you sure you want to remove this mutual fund?")) return;
+    const handleDeleteFund = async () => {
+        if (!fundToDelete) return;
         try {
-            await deleteMutualFund(id);
-            setFunds(funds.filter(s => s.id !== id));
+            await deleteMutualFund(fundToDelete);
+            setFunds(funds.filter(s => s.id !== fundToDelete));
             toast.success("Mutual Fund removed");
+            setFundToDelete(null);
         } catch (error) {
             toast.error("Failed to remove mutual fund");
         }
@@ -408,7 +420,7 @@ export default function MutualFundsClient({ initialFunds }: { initialFunds: any[
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all"
-                                                    onClick={() => handleDeleteFund(fund.id)}
+                                                    onClick={() => setFundToDelete(fund.id)}
                                                 >
                                                     <Trash2 className="h-3 w-3" />
                                                 </Button>
@@ -473,6 +485,26 @@ export default function MutualFundsClient({ initialFunds }: { initialFunds: any[
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Custom UI Delete Alert */}
+            <AlertDialog open={!!fundToDelete} onOpenChange={(open) => {
+                if (!open) setFundToDelete(null);
+            }}>
+                <AlertDialogContent className="glass-card border-border">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Mutual Fund?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to remove this mutual fund from your portfolio? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteFund} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

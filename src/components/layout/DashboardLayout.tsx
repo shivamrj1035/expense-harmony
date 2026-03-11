@@ -6,6 +6,8 @@ import { AppSidebar } from "./AppSidebar";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { NavLink } from "@/components/NavLink";
 import { PushNotificationManager } from "@/components/notifications/PushNotificationManager";
+import { PrivacyToggle } from "@/components/privacy/PrivacyToggle";
+import { GlobalMonthPicker } from "./GlobalMonthPicker";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -32,21 +34,34 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="flex flex-col border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-50">
             <div className="h-[env(safe-area-inset-top)]" />
-            <div className="h-16 flex items-center gap-4 px-4 lg:px-6 relative">
-              <SidebarTrigger className="shrink-0" />
+            <div className="h-16 flex items-center justify-between px-3 md:px-6 w-full">
+              {/* Left Section: Sidebar & Date Picker */}
+              <div className="flex items-center gap-1.5 sm:gap-4 flex-1 md:flex-none">
+                <SidebarTrigger className="shrink-0" />
+                <GlobalMonthPicker />
+              </div>
 
-              <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
+              {/* Center Section: App Title */}
+              <div className="flex items-center justify-center flex-1 gap-2 absolute left-1/2 -translate-x-1/2">
                 <NavLink
                   href="/dashboard"
                   end
-                  className="text-2xl font-black tracking-tighter text-gradient hover:opacity-80 transition-opacity"
+                  className="text-xl md:text-2xl font-black tracking-tighter text-gradient hover:opacity-80 transition-opacity"
                 >
                   SpendWise
                 </NavLink>
+                <div className="hidden md:block">
+                  <PrivacyToggle />
+                </div>
               </div>
 
-              <div className="flex-1" />
-              <UserButton afterSignOutUrl="/" />
+              {/* Right Section: Privacy Toggle (Mobile) & Profile */}
+              <div className="flex items-center justify-end gap-2 sm:gap-4 flex-1 md:flex-none">
+                <div className="md:hidden">
+                    <PrivacyToggle />
+                </div>
+                <UserButton afterSignOutUrl="/" />
+              </div>
             </div>
           </header>
           <main className="flex-1 overflow-auto p-4 lg:p-6 custom-scrollbar">

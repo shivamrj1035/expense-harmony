@@ -9,18 +9,19 @@ import { toggleCategoryExpense } from "@/app/actions/expenses";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useDateStore } from "@/store/useDateStore";
 
 export function CategoryTracker({ category, expenses }: { category: any, expenses: any[] }) {
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const { selectedMonth } = useDateStore();
     const [loadingDate, setLoadingDate] = useState<string | null>(null);
 
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
     const categoryExpenses = useMemo(() => {
-        return expenses.filter(e => e.categoryId === category.id && isSameMonth(new Date(e.date), currentMonth));
-    }, [expenses, category.id, currentMonth]);
+        return expenses.filter(e => e.categoryId === category.id && isSameMonth(new Date(e.date), selectedMonth));
+    }, [expenses, category.id, selectedMonth]);
 
     const handleToggle = async (date: Date) => {
         const dateKey = format(date, "yyyy-MM-dd");
@@ -73,25 +74,9 @@ export function CategoryTracker({ category, expenses }: { category: any, expense
                     <h3 className="font-bold text-sm truncate max-w-[120px]">{category.name}</h3>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1))}
-                    >
-                        <ChevronLeft className="h-3 w-3" />
-                    </Button>
-                    <span className="text-[10px] font-medium w-16 text-center">
-                        {format(currentMonth, "MMM yyyy")}
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground w-full text-right px-2">
+                        {format(selectedMonth, "MMM yyyy")}
                     </span>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1))}
-                    >
-                        <ChevronRight className="h-3 w-3" />
-                    </Button>
                 </div>
             </div>
 
