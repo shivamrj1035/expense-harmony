@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, Suspense } from "react";
 import { usePathname } from "next/navigation";
 
 interface LoadingContextType {
@@ -12,18 +12,34 @@ interface LoadingContextType {
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
 
+function PathnameWatcher({ onPathChange }: { onPathChange: () => void }) {
+    const pathname = usePathname();
+    useEffect(() => {
+        onPathChange();
+    }, [pathname, onPathChange]);
+    return null;
+}
+
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(false);
     const [loadingText, setLoadingText] = useState("");
-    const pathname = usePathname();
 
-    // Automatically hide loader when pathname changes
-    useEffect(() => {
+    const handlePathChange = React.useCallback(() => {
         setIsLoading(false);
-    }, [pathname]);
+    }, []);
+
+    const value = useMemo(() => ({
+        isLoading,
+        setIsLoading,
+        loadingText,
+        setLoadingText
+    }), [isLoading, loadingText]);
 
     return (
-        <LoadingContext.Provider value={{ isLoading, setIsLoading, loadingText, setLoadingText }}>
+        <LoadingContext.Provider value={value}>
+            <Suspense fallback={null}>
+                <PathnameWatcher onPathChange={handlePathChange} />
+            </Suspense>
             {children}
         </LoadingContext.Provider>
     );

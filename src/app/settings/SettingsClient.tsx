@@ -17,6 +17,7 @@ import { updateUserSettings } from "@/app/actions/user";
 import { testPushNotification, subscribeToPush } from "@/app/actions/notifications";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
+import { useLoading } from "@/components/providers/LoadingProvider";
 import { Moon, Sun, Bell, Globe, Mail, LayoutDashboard, TrendingUp, PieChart, Wallet, Clock } from "lucide-react";
 
 export default function SettingsClient({ user }: { user: any }) {
@@ -83,6 +84,19 @@ export default function SettingsClient({ user }: { user: any }) {
         );
     };
 
+    const { setIsLoading, setLoadingText } = useLoading();
+
+    const handleThemeChange = (isDark: boolean) => {
+        setLoadingText(isDark ? "ENABLING DARK MODE" : "ENABLING LIGHT MODE");
+        setIsLoading(true);
+        setTimeout(() => {
+            setTheme(isDark ? "dark" : "light");
+            // Loader will be hidden by the useEffect in LoadingProvider when navigation finishes or manually here if needed
+            // Since we aren't navigating, we hide it manually after a short delay
+            setTimeout(() => setIsLoading(false), 800);
+        }, 1500);
+    };
+
     const handleSave = async () => {
         setLoading(true);
         try {
@@ -102,7 +116,7 @@ export default function SettingsClient({ user }: { user: any }) {
     };
 
     return (
-        <div className="max-w-4xl space-y-8">
+        <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold">Settings</h1>
                 <p className="text-muted-foreground">Manage your account and preferences</p>
@@ -184,7 +198,7 @@ export default function SettingsClient({ user }: { user: any }) {
                         </div>
                         <Switch
                             checked={theme === "dark"}
-                            onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                            onCheckedChange={handleThemeChange}
                         />
                     </div>
                 </GlassCard>

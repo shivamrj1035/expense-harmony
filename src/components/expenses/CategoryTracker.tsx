@@ -69,9 +69,9 @@ export function CategoryTracker({ category, expenses }: { category: any, expense
     return (
         <GlassCard className="p-4 flex flex-col gap-4 overflow-hidden group">
             <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                    <span className="text-xl" style={{ color: category.color }}>{category.icon}</span>
-                    <h3 className="font-bold text-sm truncate max-w-[120px]">{category.name}</h3>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-xl flex-shrink-0" style={{ color: category.color }}>{category.icon}</span>
+                    <h3 className="font-bold text-sm truncate">{category.name}</h3>
                 </div>
                 <div className="flex items-center gap-1">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground w-full text-right px-2">
@@ -80,16 +80,16 @@ export function CategoryTracker({ category, expenses }: { category: any, expense
                 </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 text-[8px] font-bold text-muted-foreground text-center mb-1">
-                {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                    <div key={i}>{d}</div>
+            <div className="grid grid-cols-7 gap-1 text-[9px] font-bold text-muted-foreground/50 text-center mb-1 uppercase tracking-tighter">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => (
+                    <div key={i}>{d[0]}</div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-7 gap-1 px-1">
                 {/* Empty slots for starting offset */}
                 {Array.from({ length: monthStart.getDay() }).map((_, i) => (
-                    <div key={`empty-${i}`} className="h-6 w-6" />
+                    <div key={`empty-${i}`} className="h-7 w-7" />
                 ))}
 
                 {days.map((date) => {
@@ -110,9 +110,9 @@ export function CategoryTracker({ category, expenses }: { category: any, expense
                                         onClick={() => handleToggle(date)}
                                         disabled={isLoading}
                                         className={cn(
-                                            "h-9 w-9 rounded-lg flex items-center justify-center text-[11px] transition-all relative border",
+                                            "h-7 w-7 rounded-lg flex items-center justify-center text-[10px] transition-all relative border",
                                             marked
-                                                ? "bg-accent/20 border-accent text-accent shadow-[0_0_10px_rgba(var(--accent),0.2)]"
+                                                ? "bg-accent/20 border-accent/40 text-accent font-bold"
                                                 : isSkipped
                                                     ? "bg-destructive/10 border-destructive/30 text-destructive/70 hover:bg-destructive/20"
                                                     : expected
@@ -127,12 +127,12 @@ export function CategoryTracker({ category, expenses }: { category: any, expense
                                         {/* Price Badge */}
                                         {(marked || expected) && (
                                             <div className={cn(
-                                                "absolute -top-1.5 -right-1.5 px-1 py-0.5 rounded-md text-[7px] font-bold leading-none border shadow-sm",
+                                                "absolute -top-1.5 -right-1 px-1 py-0.5 rounded-md text-[6px] font-black leading-none border shadow-md z-10",
                                                 marked
-                                                    ? "bg-accent border-accent-foreground/20 text-accent-foreground"
+                                                    ? "bg-accent border-accent-foreground/20 text-white"
                                                     : isSkipped
-                                                        ? "bg-destructive border-destructive-foreground/20 text-destructive-foreground"
-                                                        : "bg-primary border-primary-foreground/20 text-primary-foreground"
+                                                        ? "bg-destructive border-destructive-foreground/20 text-white"
+                                                        : "bg-primary border-primary-foreground/20 text-white"
                                             )}>
                                                 {category.fixedAmount}
                                             </div>

@@ -4,7 +4,49 @@
 
 @layer base {
   :root {
-    /* Deep Space Background */
+    /* Light Mode - Soft & Clean */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 263 89% 65%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 189 94% 43%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 142 71% 45%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 263 89% 65%;
+
+    --radius: 1.25rem;
+
+    --glass-bg: 0 0% 100% / 0.7;
+    --glass-border: 240 10% 90% / 0.5;
+
+    --gradient-primary: linear-gradient(135deg, #7c3aed, #0ea5e9);
+    --gradient-secondary: linear-gradient(135deg, #0ea5e9, #059669);
+    --gradient-accent: linear-gradient(135deg, #059669, #10b981);
+    --shadow-glow: 0 0 80px -20px rgba(124, 58, 237, 0.3);
+    --shadow-card: 0 12px 40px -12px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark {
+    /* Dark Mode - Deep Space */
     --background: 240 15% 5%;
     --foreground: 0 0% 98%;
 
@@ -14,18 +56,15 @@
     --popover: 240 12% 8%;
     --popover-foreground: 0 0% 98%;
 
-    /* Neon Violet */
     --primary: 263 89% 65%;
     --primary-foreground: 0 0% 100%;
 
-    /* Vibrant Cyan */
     --secondary: 189 94% 43%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 240 10% 12%;
     --muted-foreground: 240 5% 70%;
 
-    /* Emerald Green */
     --accent: 142 71% 45%;
     --accent-foreground: 0 0% 100%;
 
@@ -36,14 +75,9 @@
     --input: 240 10% 15%;
     --ring: 263 89% 65%;
 
-    --radius: 1.25rem;
-
     --glass-bg: 240 15% 10% / 0.4;
     --glass-border: 240 10% 20% / 0.5;
-
-    --gradient-primary: linear-gradient(135deg, #7c3aed, #0ea5e9);
-    --gradient-secondary: linear-gradient(135deg, #0ea5e9, #059669);
-    --gradient-accent: linear-gradient(135deg, #059669, #10b981);
+    
     --shadow-glow: 0 0 80px -20px rgba(124, 58, 237, 0.5);
     --shadow-card: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
   }
