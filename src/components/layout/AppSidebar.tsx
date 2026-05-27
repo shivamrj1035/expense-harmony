@@ -53,6 +53,7 @@ export function AppSidebar() {
     { title: "Categories", url: "/categories", icon: FolderOpen },
     { title: "Stock Analysis", url: "/stocks", icon: BarChart3, hideOnPrivacy: true },
     { title: "Mutual Funds", url: "/mutual-funds", icon: PieChart, hideOnPrivacy: true },
+    { title: "Money Management", url: "/money-management", icon: CircleDollarSign },
     { title: "Settings", url: "/settings", icon: Settings },
   ].filter(item => !(isPrivacyActive && item.hideOnPrivacy));
 

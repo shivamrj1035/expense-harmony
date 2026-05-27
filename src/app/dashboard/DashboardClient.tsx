@@ -82,8 +82,10 @@ export default function DashboardClient({
     categories,
     stocks = [],
     funds = [],
+    bankAccounts = [],
     showStocksInSummary,
     showMutualFundsInSummary,
+    showMoneyManagementInSummary,
     syncResult,
     userSettings,
 }: any) {
@@ -128,6 +130,7 @@ export default function DashboardClient({
         let updatedWidgets = [...currentWidgets];
         const hasStocks = updatedWidgets.some(w => w.id === "stocks");
         const hasFunds = updatedWidgets.some(w => w.id === "funds");
+        const hasBanks = updatedWidgets.some(w => w.id === "banks");
 
         if (showStocksInSummary && !hasStocks) {
             updatedWidgets.unshift({ id: "stocks", size: 6 });
@@ -140,6 +143,15 @@ export default function DashboardClient({
             updatedWidgets.splice(stocksIdx !== -1 ? stocksIdx + 1 : 0, 0, { id: "funds", size: 6 });
         } else if (!showMutualFundsInSummary && hasFunds) {
             updatedWidgets = updatedWidgets.filter(w => w.id !== "funds");
+        }
+
+        if (showMoneyManagementInSummary && !hasBanks) {
+            const fundsIdx = updatedWidgets.findIndex(w => w.id === "funds");
+            const stocksIdx = updatedWidgets.findIndex(w => w.id === "stocks");
+            const insertIdx = fundsIdx !== -1 ? fundsIdx + 1 : (stocksIdx !== -1 ? stocksIdx + 1 : 0);
+            updatedWidgets.splice(insertIdx, 0, { id: "banks", size: 6 });
+        } else if (!showMoneyManagementInSummary && hasBanks) {
+            updatedWidgets = updatedWidgets.filter(w => w.id !== "banks");
         }
 
         return updatedWidgets;
@@ -519,6 +531,52 @@ export default function DashboardClient({
                                             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Invested</p><p className="text-lg font-black">₹{totalInvestment.toLocaleString()}</p></div>
                                             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Current</p><p className="text-lg font-black">₹{currentValue.toLocaleString()}</p></div>
                                             <div className={cn("p-3 rounded-xl border", totalPL >= 0 ? "bg-accent/5 border-accent/20" : "bg-destructive/5 border-destructive/20")}><p className="text-[10px] text-muted-foreground uppercase">Returns</p><p className={cn("text-lg font-black", totalPL >= 0 ? "text-accent" : "text-destructive")}>{totalPL >= 0 ? "+" : ""}₹{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(1)}%)</p></div>
+                                        </div>
+                                    </SortableDashboardCard>
+                                );
+                            }
+
+                            if (id === "banks") {
+                                const bankBalances = bankAccounts.map((acc: any) => {
+                                    const latestStatement = acc.statements && acc.statements.length > 0
+                                        ? [...acc.statements].sort((a: any, b: any) => b.month.localeCompare(a.month))[0]
+                                        : null;
+                                    return {
+                                        bankName: acc.bankName,
+                                        accountNumber: acc.accountNumber,
+                                        balance: latestStatement ? latestStatement.closingBalance : 0,
+                                        month: latestStatement ? latestStatement.month : "N/A",
+                                    };
+                                });
+                                const totalBankBalance = bankBalances.reduce((sum: number, b: any) => sum + b.balance, 0);
+
+                                return (
+                                    <SortableDashboardCard {...commonProps} key={id} title="Money Management (Banks)" headerAction={
+                                        <Link href="/money-management" className="text-[10px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            MANAGE <ArrowUpRight className="h-2.5 w-2.5" />
+                                        </Link>
+                                    }>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-center">
+                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Cash Balance</p>
+                                                <p className="text-xl font-black mt-1 text-primary">₹{isPrivacyActive ? "****" : totalBankBalance.toLocaleString()}</p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {bankBalances.slice(0, 3).map((b: any, index: number) => (
+                                                    <div key={index} className="flex justify-between items-center text-xs p-1.5 rounded-lg bg-white/5 border border-white/5 px-3">
+                                                        <div>
+                                                            <span className="font-bold text-primary-foreground">{b.bankName}</span>
+                                                            <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">xxxx {b.accountNumber}</span>
+                                                        </div>
+                                                        <span className="font-mono font-bold text-primary">
+                                                            {isPrivacyActive ? "₹****" : `₹${b.balance.toLocaleString()}`}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {bankBalances.length === 0 && (
+                                                    <p className="text-xs text-muted-foreground text-center py-2">No bank statements linked.</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </SortableDashboardCard>
                                 );

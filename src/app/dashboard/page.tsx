@@ -4,6 +4,7 @@ import { getExpenses } from "@/app/actions/expenses";
 import { getCategories } from "@/app/actions/categories";
 import { getStocks } from "@/app/actions/stocks";
 import { getMutualFunds } from "@/app/actions/mutual-funds";
+import { getBankAccounts } from "@/app/actions/money-management";
 import { syncUser } from "@/app/actions/user";
 import { redirect } from "next/navigation";
 
@@ -24,6 +25,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     const forceRefresh = searchParams.refresh === "true";
     const stocks = user.showStocksInSummary ? await getStocks(forceRefresh) : [];
     const funds = user.showMutualFundsInSummary ? await getMutualFunds(forceRefresh) : [];
+    const bankAccounts = user.showMoneyManagementInSummary ? await getBankAccounts() : [];
 
     return (
         <DashboardLayout>
@@ -32,8 +34,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 categories={categories}
                 stocks={stocks}
                 funds={funds}
+                bankAccounts={bankAccounts}
                 showStocksInSummary={user.showStocksInSummary}
                 showMutualFundsInSummary={user.showMutualFundsInSummary}
+                showMoneyManagementInSummary={user.showMoneyManagementInSummary}
                 syncResult={syncResult}
                 userSettings={user}
             />

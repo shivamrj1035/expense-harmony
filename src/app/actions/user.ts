@@ -42,6 +42,7 @@ export async function updateUserSettings(data: {
     reportDay?: number;
     showStocksInSummary?: boolean;
     showMutualFundsInSummary?: boolean;
+    showMoneyManagementInSummary?: boolean;
     monthlyExpenseLimit?: number;
     manualBalance?: number;
     lastBudgetPromptMonth?: string;
