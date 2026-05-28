@@ -6,12 +6,7 @@ import { revalidatePath } from "next/cache";
 import path from "path";
 import { pathToFileURL } from "url";
 
-// Import PDF.js using the legacy build which is node-compatible
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-
-// Configure PDF.js worker path for Node environments (Windows compatible)
-const workerPath = path.resolve(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs");
-pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+// PDF.js is dynamically imported in uploadBankStatement to avoid top-level load errors in serverless environments
 
 interface ParsedTransaction {
   id: string;
@@ -173,6 +168,15 @@ export async function uploadBankStatement(
   const uint8Array = new Uint8Array(pdfBuffer);
 
   try {
+    // Import PDF.js using the legacy build which is node-compatible
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
+    // Configure PDF.js worker path for Node environments (Windows / Vercel compatible)
+    const { createRequire } = await import("module");
+    const require = createRequire(import.meta.url);
+    const workerPath = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+
     const loadingTask = pdfjsLib.getDocument({
       data: uint8Array,
       password,

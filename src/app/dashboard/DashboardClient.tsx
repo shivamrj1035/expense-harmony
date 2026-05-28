@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/glass-card";
+import { useUser } from "@clerk/nextjs";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Wallet,
     Receipt,
@@ -13,7 +15,16 @@ import {
     Send,
     Mail,
     Loader2,
-    RefreshCw
+    RefreshCw,
+    Plus,
+    Upload,
+    Building2,
+    Activity,
+    FileText,
+    ChevronLeft,
+    ChevronRight,
+    Search,
+    Bell
 } from "lucide-react";
 import {
     PieChart as RechartsPie,
@@ -46,7 +57,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { SortableDashboardCard } from "@/components/dashboard/SortableDashboardCard";
-import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfWeek, endOfWeek, isSameMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, isSameMonth } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -59,7 +70,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { AnimatedNumber } from "@/components/ui/animated-number";
 import { usePrivacyStore } from "@/store/privacyStore";
 import { useDateStore } from "@/store/useDateStore";
 import { refreshPortfolio } from "@/app/actions/stocks";
@@ -94,6 +104,7 @@ export default function DashboardClient({
     const { selectedMonth } = useDateStore();
 
     const isPrivacyActive = userSettings?.isPrivacyEnabled && !isPrivacyUnlocked;
+    const [chartType, setChartType] = useState<"income-vs-expenses" | "spending-velocity">("income-vs-expenses");
 
     useEffect(() => {
         if (syncResult?.success && syncResult.categories?.length > 0) {
@@ -318,6 +329,109 @@ export default function DashboardClient({
         return expenses.filter((e: any) => isSameMonth(new Date(e.date), selectedMonth)).slice(0, 5);
     }, [expenses, selectedMonth]);
 
+    const { user: clerkUser } = useUser();
+    const firstName = clerkUser?.firstName || "Arjun";
+
+    const totalReceived = useMemo(() => {
+        let sum = 0;
+        bankAccounts.forEach((acc: any) => {
+            const statement = acc.statements?.find((s: any) => isSameMonth(new Date(s.month), selectedMonth));
+            if (statement) {
+                sum += Number(statement.totalReceived || 0);
+            }
+        });
+        return sum;
+    }, [bankAccounts, selectedMonth]);
+
+    const totalBankBalance = useMemo(() => {
+        let sum = 0;
+        bankAccounts.forEach((acc: any) => {
+            const statement = acc.statements?.find((s: any) => isSameMonth(new Date(s.month), selectedMonth));
+            if (statement) {
+                sum += Number(statement.closingBalance || 0);
+            }
+        });
+        if (sum === 0 && userSettings?.manualBalance) {
+            sum = userSettings.manualBalance;
+        }
+        return sum;
+    }, [bankAccounts, selectedMonth, userSettings]);
+
+    const bankBalances = useMemo(() => {
+        return bankAccounts.map((acc: any) => {
+            const selectedMonthStatement = acc.statements?.find((s: any) => isSameMonth(new Date(s.month), selectedMonth));
+            const latestStatement = acc.statements && acc.statements.length > 0
+                ? [...acc.statements].sort((a: any, b: any) => b.month.localeCompare(a.month))[0]
+                : null;
+            const statement = selectedMonthStatement || latestStatement;
+            return {
+                id: acc.id,
+                bankName: acc.bankName,
+                accountNumber: acc.accountNumber,
+                balance: statement ? Number(statement.closingBalance || 0) : 0,
+            };
+        });
+    }, [bankAccounts, selectedMonth]);
+
+    const lastMonthStats = useMemo(() => {
+        const lastMonth = subMonths(selectedMonth, 1);
+        let receivedSum = 0;
+        const spentSum = expenses
+            .filter((e: any) => isSameMonth(new Date(e.date), lastMonth))
+            .reduce((sum: number, e: any) => sum + Number(e.amount), 0);
+            
+        bankAccounts.forEach((acc: any) => {
+            const statement = acc.statements?.find((s: any) => isSameMonth(new Date(s.month), lastMonth));
+            if (statement) {
+                receivedSum += Number(statement.totalReceived || 0);
+            }
+        });
+        
+        const netSavings = receivedSum - spentSum;
+        
+        let balanceSum = 0;
+        bankAccounts.forEach((acc: any) => {
+            const statement = acc.statements?.find((s: any) => isSameMonth(new Date(s.month), lastMonth));
+            if (statement) {
+                balanceSum += Number(statement.closingBalance || 0);
+            }
+        });
+        if (balanceSum === 0 && userSettings?.manualBalance) {
+            balanceSum = userSettings.manualBalance;
+        }
+        
+        return {
+            received: receivedSum,
+            spent: spentSum,
+            savings: netSavings,
+            balance: balanceSum
+        };
+    }, [expenses, bankAccounts, selectedMonth, userSettings]);
+
+    const trends = useMemo(() => {
+        const getChange = (curr: number, prev: number) => {
+            if (prev === 0) return curr > 0 ? 100 : 0;
+            return ((curr - prev) / prev) * 100;
+        };
+        
+        return {
+            receivedChange: getChange(totalReceived, lastMonthStats.received),
+            spentChange: getChange(stats.currentTotal, lastMonthStats.spent),
+            savingsChange: getChange(totalReceived - stats.currentTotal, lastMonthStats.savings),
+            balanceChange: getChange(totalBankBalance, lastMonthStats.balance)
+        };
+    }, [totalReceived, stats.currentTotal, totalBankBalance, lastMonthStats]);
+
+    const autoExpenses = useMemo(() => {
+        return expenses.filter((e: any) => e.isAutoGenerated && isSameMonth(new Date(e.date), selectedMonth)).slice(0, 8);
+    }, [expenses, selectedMonth]);
+
+    const activeCategoriesCount = useMemo(() => {
+        const currentMonthExpenses = expenses.filter((e: any) => isSameMonth(new Date(e.date), selectedMonth));
+        const activeIds = new Set(currentMonthExpenses.map((e: any) => e.categoryId));
+        return activeIds.size;
+    }, [expenses, selectedMonth]);
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
@@ -361,371 +475,714 @@ export default function DashboardClient({
     };
 
     return (
-        <div className="space-y-6 max-w-[1400px] mx-auto pb-20">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div className="space-y-6 max-w-[1400px] mx-auto pb-20 px-4 md:px-6 transition-all duration-500">
+            {/* Header / Welcome Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-2">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Dashboard - Analytics Hub</h1>
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-[0.2em] mt-0.5">
-                        Modular Report Engine • {format(selectedMonth, "MMMM yyyy")}
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                        Welcome back, {firstName} 👋
+                    </p>
+                    <h1 className="text-3xl font-black tracking-tight mt-1">Dashboard Overview</h1>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Here's what's happening with your finances in {format(selectedMonth, "MMMM yyyy")}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-2 py-1 rounded-md bg-accent/10 border border-accent/20 text-accent uppercase font-black">
-                        Custom Layout Active
-                    </span>
-
-                    <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm" className="bg-gradient-primary hover:opacity-90 glow-primary h-8 gap-2 text-[10px] font-black uppercase tracking-wider">
-                                <Send className="h-3 w-3" />
-                                Send Report
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="glass-card border-border sm:max-w-[400px]">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                    <Mail className="h-5 w-5 text-primary" />
-                                    Analysis Hub Report
-                                </DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-6 pt-4">
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    We will generate a high-fidelity analysis of your spending for the selected month and send it directly to your email.
-                                </p>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Select Month</Label>
-                                    <Input
-                                        type="month"
-                                        value={reportMonth}
-                                        onChange={(e) => setReportMonth(e.target.value)}
-                                        className="bg-white/5 border-white/10 h-12 text-lg font-bold"
-                                    />
-                                </div>
-                                <Button
-                                    onClick={handleSendHubReport}
-                                    className="w-full bg-gradient-primary hover:opacity-90 h-12 text-sm font-black uppercase tracking-widest"
-                                    disabled={sendingReport}
-                                >
-                                    {sendingReport ? "Generating..." : "Dispatch Report"}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-
-                    {/* Monthly Budget Prompt Dialog */}
-                    <Dialog open={budgetPromptOpen} onOpenChange={(open) => {
-                        if (!open) handleDismissBudgetPrompt()
-                    }}>
-                        <DialogContent className="glass-card border-border sm:max-w-[400px]">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                    <Wallet className="h-5 w-5 text-accent" />
-                                    New Month, New Budget!
-                                </DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-6 pt-4">
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    It's the start of a new month! Want to review or update your monthly expense limit to keep your spending on track?
-                                </p>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">
-                                        Expense Limit (₹)
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        placeholder="E.g. 20000"
-                                        value={newBudgetTarget}
-                                        onChange={(e) => setNewBudgetTarget(e.target.value)}
-                                        className="bg-white/5 border-white/10 h-10 font-bold"
-                                    />
-                                </div>
-                                <div className="flex gap-2 w-full pt-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleDismissBudgetPrompt}
-                                        className="flex-1 h-10 text-xs font-bold uppercase"
-                                    >
-                                        Skip
-                                    </Button>
-                                    <Button
-                                        onClick={handleSaveMonthlyBudget}
-                                        className="flex-1 bg-gradient-primary hover:opacity-90 h-10 text-xs font-bold uppercase"
-                                        disabled={savingBudget}
-                                    >
-                                        {savingBudget ? "Saving..." : "Set Budget"}
-                                    </Button>
-                                </div>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                
+                <div className="flex items-center gap-2.5">
+                    <Link href="/money-management">
+                        <Button variant="outline" size="sm" className="h-9 px-4 text-xs font-bold uppercase tracking-wider border-border/80 hover:bg-white/5 active:scale-[0.98] transition-all">
+                            <Plus className="mr-1.5 h-3.5 w-3.5" />
+                            Add Bank Account
+                        </Button>
+                    </Link>
+                    <Link href="/money-management">
+                        <Button size="sm" className="bg-primary hover:opacity-90 h-9 px-4 text-xs font-bold uppercase tracking-wider glow-primary active:scale-[0.98] transition-all">
+                            <Upload className="mr-1.5 h-3.5 w-3.5 text-primary-foreground" />
+                            Upload Statement
+                        </Button>
+                    </Link>
                 </div>
             </div>
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToFirstScrollableAncestor]}>
-                <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
-                    <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
-                        {widgets.map((widget: any) => {
-                            const { id, size } = widget;
-                            const commonProps = {
-                                id,
-                                className: getColSpan(size),
-                                onResize: handleResize,
-                                canGrow: size < 6,
-                                canShrink: size > 2
-                            };
+            {/* Financial Summary Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    {
+                        title: "Total Received",
+                        value: totalReceived,
+                        change: trends.receivedChange,
+                        icon: <TrendingUp className="h-4 w-4 text-emerald-500" />,
+                        iconBg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-500",
+                        trendColor: "text-emerald-500 bg-emerald-500/5 border-emerald-500/10"
+                    },
+                    {
+                        title: "Total Spent",
+                        value: stats.currentTotal,
+                        change: trends.spentChange,
+                        icon: <TrendingDown className="h-4 w-4 text-rose-500" />,
+                        iconBg: "bg-rose-500/10 border-rose-500/20 text-rose-500",
+                        trendColor: "text-rose-500 bg-rose-500/5 border-rose-500/10"
+                    },
+                    {
+                        title: "Net Savings",
+                        value: totalReceived - stats.currentTotal,
+                        change: trends.savingsChange,
+                        icon: (totalReceived - stats.currentTotal) >= 0 ? <TrendingUp className="h-4 w-4 text-emerald-500" /> : <TrendingDown className="h-4 w-4 text-rose-500" />,
+                        iconBg: (totalReceived - stats.currentTotal) >= 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20",
+                        trendColor: (totalReceived - stats.currentTotal) >= 0 ? "text-emerald-500 bg-emerald-500/5 border-emerald-500/10" : "text-rose-500 bg-rose-500/5 border-rose-500/10"
+                    },
+                    {
+                        title: "Closing Balance",
+                        value: totalBankBalance,
+                        change: trends.balanceChange,
+                        icon: <Wallet className="h-4 w-4 text-blue-500" />,
+                        iconBg: "bg-blue-500/10 border-blue-500/20 text-blue-500",
+                        trendColor: "text-blue-500 bg-blue-500/5 border-blue-500/10"
+                    }
+                ].map((card, i) => (
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ type: "spring", stiffness: 100, damping: 15, delay: i * 0.05 }}
+                        whileHover={{ y: -2, scale: 1.005 }}
+                        className="glass-card p-4 flex flex-col justify-between"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{card.title}</span>
+                                <p className="text-2xl font-black mt-1 leading-none tracking-tight">
+                                    {isPrivacyActive && card.title === "Closing Balance" ? "₹****" : `₹${card.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                </p>
+                            </div>
+                            <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center border", card.iconBg)}>
+                                {card.icon}
+                            </div>
+                        </div>
+                        <div className="mt-3 flex items-center">
+                            <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded border flex items-center gap-0.5", card.trendColor)}>
+                                {card.change >= 0 ? "↑" : "↓"} {Math.abs(card.change).toFixed(1)}%
+                            </span>
+                            <span className="text-[9px] text-muted-foreground ml-1.5 uppercase font-semibold">vs Apr</span>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
 
-                            if (id === "stocks") {
-                                const totalInvestment = stocks.reduce((sum: number, s: any) => sum + (s.quantity * s.avgPrice), 0);
-                                const currentValue = stocks.reduce((sum: number, s: any) => sum + (s.quantity * s.currentPrice), 0);
-                                const totalPL = currentValue - totalInvestment;
-                                const plPercent = totalInvestment > 0 ? (totalPL / totalInvestment) * 100 : 0;
-
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Stock Portfolio" headerAction={
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
-                                                setIsRefreshing(true);
-                                                try {
-                                                    await refreshPortfolio();
-                                                    window.location.href = "/dashboard?refresh=true";
-                                                } catch (e) { toast.error("Refresh failed") }
-                                                finally { setIsRefreshing(false) }
-                                            }} disabled={isRefreshing}>
-                                                <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
-                                            </Button>
-                                            <Link href="/stocks" className="text-[10px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full">DETAILS <ArrowUpRight className="h-2.5 w-2.5" /></Link>
-                                        </div>
-                                    }>
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Invested</p><p className="text-lg font-black">₹{totalInvestment.toLocaleString()}</p></div>
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Current</p><p className="text-lg font-black">₹{currentValue.toLocaleString()}</p></div>
-                                            <div className={cn("p-3 rounded-xl border", totalPL >= 0 ? "bg-accent/5 border-accent/20" : "bg-destructive/5 border-destructive/20")}><p className="text-[10px] text-muted-foreground uppercase">Returns</p><p className={cn("text-lg font-black", totalPL >= 0 ? "text-accent" : "text-destructive")}>{totalPL >= 0 ? "+" : ""}₹{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(1)}%)</p></div>
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "funds") {
-                                const totalInvestment = funds.reduce((sum: number, s: any) => sum + (s.quantity * s.avgPrice), 0);
-                                const currentValue = funds.reduce((sum: number, s: any) => sum + (s.quantity * s.currentPrice), 0);
-                                const totalPL = currentValue - totalInvestment;
-                                const plPercent = totalInvestment > 0 ? (totalPL / totalInvestment) * 100 : 0;
-
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Mutual Funds Hub" headerAction={
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
-                                                setIsRefreshing(true);
-                                                try {
-                                                    await refreshMFPortfolio();
-                                                    window.location.href = "/dashboard?refresh=true";
-                                                } catch (e) { toast.error("Refresh failed") }
-                                                finally { setIsRefreshing(false) }
-                                            }} disabled={isRefreshing}>
-                                                <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
-                                            </Button>
-                                            <Link href="/mutual-funds" className="text-[10px] text-secondary font-bold bg-secondary/10 px-2 py-0.5 rounded-full">DETAILS <ArrowUpRight className="h-2.5 w-2.5" /></Link>
-                                        </div>
-                                    }>
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Invested</p><p className="text-lg font-black">₹{totalInvestment.toLocaleString()}</p></div>
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-[10px] text-muted-foreground uppercase">Current</p><p className="text-lg font-black">₹{currentValue.toLocaleString()}</p></div>
-                                            <div className={cn("p-3 rounded-xl border", totalPL >= 0 ? "bg-accent/5 border-accent/20" : "bg-destructive/5 border-destructive/20")}><p className="text-[10px] text-muted-foreground uppercase">Returns</p><p className={cn("text-lg font-black", totalPL >= 0 ? "text-accent" : "text-destructive")}>{totalPL >= 0 ? "+" : ""}₹{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(1)}%)</p></div>
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "banks") {
-                                const bankBalances = bankAccounts.map((acc: any) => {
-                                    const latestStatement = acc.statements && acc.statements.length > 0
-                                        ? [...acc.statements].sort((a: any, b: any) => b.month.localeCompare(a.month))[0]
-                                        : null;
-                                    return {
-                                        bankName: acc.bankName,
-                                        accountNumber: acc.accountNumber,
-                                        balance: latestStatement ? latestStatement.closingBalance : 0,
-                                        month: latestStatement ? latestStatement.month : "N/A",
-                                    };
-                                });
-                                const totalBankBalance = bankBalances.reduce((sum: number, b: any) => sum + b.balance, 0);
-
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Money Management (Banks)" headerAction={
-                                        <Link href="/money-management" className="text-[10px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                            MANAGE <ArrowUpRight className="h-2.5 w-2.5" />
-                                        </Link>
-                                    }>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-center">
-                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Cash Balance</p>
-                                                <p className="text-xl font-black mt-1 text-primary">₹{isPrivacyActive ? "****" : totalBankBalance.toLocaleString()}</p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                {bankBalances.slice(0, 3).map((b: any, index: number) => (
-                                                    <div key={index} className="flex justify-between items-center text-xs p-1.5 rounded-lg bg-white/5 border border-white/5 px-3">
-                                                        <div>
-                                                            <span className="font-bold text-primary-foreground">{b.bankName}</span>
-                                                            <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">xxxx {b.accountNumber}</span>
-                                                        </div>
-                                                        <span className="font-mono font-bold text-primary">
-                                                            {isPrivacyActive ? "₹****" : `₹${b.balance.toLocaleString()}`}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {bankBalances.length === 0 && (
-                                                    <p className="text-xs text-muted-foreground text-center py-2">No bank statements linked.</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "stats") {
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Financial Summary">
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                                <p className="text-[10px] text-muted-foreground uppercase">Month Burn</p>
-                                                <p className="text-lg font-black">₹{stats.currentTotal.toLocaleString()}</p>
-                                                <p className={cn("text-[8px] font-bold", stats.change <= 0 ? "text-accent" : "text-destructive")}>
-                                                    {stats.change <= 0 ? "↓" : "↑"}{Math.abs(stats.change).toFixed(0)}% vs last mo
-                                                </p>
-                                            </div>
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                                <p className="text-[10px] text-muted-foreground uppercase">Top Category</p>
-                                                <p className="text-lg font-black truncate">{stats.topCategory?.name || "N/A"}</p>
-                                            </div>
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                                <p className="text-[10px] text-muted-foreground uppercase">Budget Status</p>
-                                                <p className="text-lg font-black">
-                                                    {userSettings?.monthlyExpenseLimit ? `₹${Math.max(0, userSettings.monthlyExpenseLimit - stats.currentTotal).toLocaleString()} left` : "No Limit"}
-                                                </p>
-                                                {userSettings?.monthlyExpenseLimit && (
-                                                    <div className="mt-1.5 h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className={cn("h-full rounded-full", (stats.currentTotal / userSettings.monthlyExpenseLimit) > 0.9 ? "bg-destructive" : "bg-primary")} 
-                                                            style={{ width: `${Math.min(100, (stats.currentTotal / userSettings.monthlyExpenseLimit) * 100)}%` }} 
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                                <p className="text-[10px] text-muted-foreground uppercase">Current Balance</p>
-                                                <p className="text-lg font-black truncate">
-                                                    {isPrivacyActive ? "₹****" : `₹${(userSettings?.manualBalance || 0).toLocaleString()}`}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "trend") {
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Spending Velocity">
-                                        <div className="h-48 mt-2">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={dailyTrend}>
-                                                    <defs><linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3} /><stop offset="95%" stopColor="#7c3aed" stopOpacity={0} /></linearGradient></defs>
-                                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} />
-                                                    <Tooltip contentStyle={{ background: "#000", border: "1px solid #333", borderRadius: "8px", fontSize: "10px" }} />
-                                                    <Area type="monotone" dataKey="amount" stroke="#7c3aed" strokeWidth={2} fill="url(#trendGradient)" />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "history") {
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="6-Month Pulse">
-                                        <div className="h-48 mt-2">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <RechartsBar data={stats.monthlyData}>
-                                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} />
-                                                    <Tooltip contentStyle={{ background: "#000", border: "1px solid #333", borderRadius: "8px", fontSize: "10px" }} />
-                                                    <Bar dataKey="amount" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-                                                </RechartsBar>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "breakdown-pie") {
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Visual Breakdown">
-                                        <div className="h-48 relative">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <RechartsPie>
-                                                    <Pie data={stats.categoryStats} innerRadius={40} outerRadius={60} paddingAngle={4} dataKey="amount" stroke="none">
-                                                        {stats.categoryStats.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />)}
-                                                    </Pie>
-                                                    <Tooltip />
-                                                </RechartsPie>
-                                            </ResponsiveContainer>
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                                <span className="text-[8px] text-muted-foreground uppercase font-bold">Total</span>
-                                                <span className="text-xs font-black">₹{stats.currentTotal.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "breakdown-detailed") {
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Category Utilization">
-                                        <div className="h-48 overflow-y-auto custom-scrollbar space-y-3 py-1">
-                                            {stats.categoryStats.map((cat, i) => {
-                                                const percentage = (cat.amount / stats.currentTotal) * 100 || 0;
-                                                return (
-                                                    <div key={i} className="space-y-1">
-                                                        <div className="flex justify-between text-[10px] font-bold">
-                                                            <span className="text-muted-foreground uppercase">{cat.name}</span>
-                                                            <span>₹{cat.amount.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                                            <div className="h-full rounded-full" style={{ width: `${percentage}%`, background: cat.color || CHART_COLORS[i % CHART_COLORS.length] }} />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-
-                            if (id === "recent") {
-                                return (
-                                    <SortableDashboardCard {...commonProps} key={id} title="Activity Stream">
-                                        <div className="space-y-2">
-                                            {recentExpenses.map((expense: any) => (
-                                                <div key={expense.id} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 rounded-lg flex items-center justify-center text-sm bg-white/[0.05]">
-                                                            {expense.category?.icon || "💰"}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] font-bold leading-none mb-1">{expense.description || expense.category?.name}</p>
-                                                            <p className="text-[8px] text-muted-foreground uppercase tracking-widest">{format(new Date(expense.date), "MMM dd")}</p>
-                                                        </div>
-                                                    </div>
-                                                    <p className="font-black text-[10px]">₹{Number(expense.amount).toLocaleString()}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </SortableDashboardCard>
-                                );
-                            }
-                            return null;
-                        })}
-                    </SortableContext>
+            {/* Bank Accounts Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.2 }}
+                className="glass-card p-4 space-y-4"
+            >
+                <div className="flex justify-between items-center">
+                    <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground">Bank Accounts</h2>
+                    <Link href="/money-management" className="text-xs text-primary font-bold hover:underline flex items-center gap-1 active:scale-95 transition-transform">
+                        View All <ChevronRight className="h-3 w-3" />
+                    </Link>
                 </div>
-            </DndContext>
+                
+                {bankBalances.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-muted-foreground">
+                        No bank accounts linked. Click "Add Bank Account" to link one.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {bankBalances.map((bank: any) => {
+                            const branding = getBankBranding(bank.bankName);
+                            return (
+                                <motion.div
+                                    key={bank.id}
+                                    whileHover={{ scale: 1.01 }}
+                                    className="p-3 rounded-xl bg-white/[0.02] border border-border/80 flex items-center justify-between"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <BankLogo bankName={bank.bankName} />
+                                        <div>
+                                            <span className="font-extrabold text-xs leading-none">{branding.displayName}</span>
+                                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">XXXX {bank.accountNumber.slice(-4)}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-black text-primary-foreground tracking-tight">
+                                        {isPrivacyActive ? "₹****" : `₹${bank.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                    </span>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                )}
+            </motion.div>
+
+            {/* Stocks & Mutual Funds Summary Row */}
+            {(showStocksInSummary || showMutualFundsInSummary) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {showStocksInSummary && (
+                        (() => {
+                            const totalInvestment = stocks.reduce((sum: number, s: any) => sum + (s.quantity * s.avgPrice), 0);
+                            const currentValue = stocks.reduce((sum: number, s: any) => sum + (s.quantity * s.currentPrice), 0);
+                            const totalPL = currentValue - totalInvestment;
+                            const plPercent = totalInvestment > 0 ? (totalPL / totalInvestment) * 100 : 0;
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.25 }}
+                                    className="glass-card p-4 space-y-4"
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <Activity className="h-4 w-4 text-primary" /> Stock Portfolio
+                                        </h2>
+                                        <Link href="/stocks" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                                            Manage <ChevronRight className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-border/80">
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Invested</p>
+                                            <p className="text-sm font-black mt-0.5">₹{totalInvestment.toLocaleString()}</p>
+                                        </div>
+                                        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-border/80">
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Current</p>
+                                            <p className="text-sm font-black mt-0.5">₹{currentValue.toLocaleString()}</p>
+                                        </div>
+                                        <div className={cn("p-2.5 rounded-lg border", totalPL >= 0 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20")}>
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Returns</p>
+                                            <p className={cn("text-sm font-black mt-0.5", totalPL >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                                {totalPL >= 0 ? "+" : ""}₹{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(1)}%)
+                                            </p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })()
+                    )}
+
+                    {showMutualFundsInSummary && (
+                        (() => {
+                            const totalInvestment = funds.reduce((sum: number, s: any) => sum + (s.quantity * s.avgPrice), 0);
+                            const currentValue = funds.reduce((sum: number, s: any) => sum + (s.quantity * s.currentPrice), 0);
+                            const totalPL = currentValue - totalInvestment;
+                            const plPercent = totalInvestment > 0 ? (totalPL / totalInvestment) * 100 : 0;
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.25 }}
+                                    className="glass-card p-4 space-y-4"
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <FileText className="h-4 w-4 text-indigo-500" /> Mutual Funds Hub
+                                        </h2>
+                                        <Link href="/mutual-funds" className="text-xs text-indigo-500 font-bold hover:underline flex items-center gap-1">
+                                            Manage <ChevronRight className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-border/80">
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Invested</p>
+                                            <p className="text-sm font-black mt-0.5">₹{totalInvestment.toLocaleString()}</p>
+                                        </div>
+                                        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-border/80">
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Current</p>
+                                            <p className="text-sm font-black mt-0.5">₹{currentValue.toLocaleString()}</p>
+                                        </div>
+                                        <div className={cn("p-2.5 rounded-lg border", totalPL >= 0 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20")}>
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Returns</p>
+                                            <p className={cn("text-sm font-black mt-0.5", totalPL >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                                {totalPL >= 0 ? "+" : ""}₹{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(1)}%)
+                                            </p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })()
+                    )}
+                </div>
+            )}
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Column 1: Cashflow Overview */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.3 }}
+                    className="glass-card p-4 space-y-4"
+                >
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground">Cashflow Overview</h2>
+                            <p className="text-[10px] text-muted-foreground uppercase mt-0.5">{format(selectedMonth, "MMMM yyyy")}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                        {/* Donut Chart */}
+                        <div className="md:col-span-6 h-48 relative flex items-center justify-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RechartsPie>
+                                    <Pie
+                                        data={stats.categoryStats}
+                                        innerRadius={55}
+                                        outerRadius={75}
+                                        paddingAngle={3}
+                                        dataKey="amount"
+                                        stroke="none"
+                                    >
+                                        {stats.categoryStats.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </RechartsPie>
+                            </ResponsiveContainer>
+                            <div className="absolute flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold">Total</span>
+                                <span className="text-lg font-black tracking-tight">₹{stats.currentTotal.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        {/* Custom Legend */}
+                        <div className="md:col-span-6 space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                            {stats.categoryStats.slice(0, 5).map((cat, i) => {
+                                const percentage = (cat.amount / stats.currentTotal) * 100 || 0;
+                                return (
+                                    <div key={i} className="flex justify-between items-center text-xs p-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: cat.color || CHART_COLORS[i % CHART_COLORS.length] }} />
+                                            <span className="font-extrabold text-[11px] truncate max-w-[100px] text-primary-foreground uppercase">{cat.name}</span>
+                                        </div>
+                                        <div className="text-right flex items-center gap-3">
+                                            <span className="text-[10px] text-muted-foreground">{percentage.toFixed(1)}%</span>
+                                            <span className="font-bold text-[11px]">₹{cat.amount.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {stats.categoryStats.length === 0 && (
+                                <p className="text-xs text-muted-foreground text-center py-8">No expenses this month.</p>
+                            )}
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Column 2: Income vs Expenses */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.35 }}
+                    className="glass-card p-4 space-y-4"
+                >
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground">
+                                {chartType === "income-vs-expenses" ? "Income vs Expenses" : "Spending Velocity"}
+                            </h2>
+                            <p className="text-[10px] text-muted-foreground uppercase mt-0.5">{format(selectedMonth, "MMMM yyyy")}</p>
+                        </div>
+                        
+                        {/* Toggle Switches */}
+                        <div className="flex rounded-lg bg-white/5 border border-border p-0.5">
+                            <button
+                                onClick={() => setChartType("income-vs-expenses")}
+                                className={cn("px-2.5 py-1 text-[9px] font-bold uppercase rounded-md transition-all", chartType === "income-vs-expenses" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                            >
+                                Compare
+                            </button>
+                            <button
+                                onClick={() => setChartType("spending-velocity")}
+                                className={cn("px-2.5 py-1 text-[9px] font-bold uppercase rounded-md transition-all", chartType === "spending-velocity" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                            >
+                                Velocity
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="h-48 mt-2">
+                        <AnimatePresence mode="wait">
+                            {chartType === "income-vs-expenses" ? (
+                                <motion.div
+                                    key="compare"
+                                    initial={{ opacity: 0, scale: 0.99 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.99 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-full h-full"
+                                >
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RechartsBar
+                                            data={[
+                                                {
+                                                    name: format(selectedMonth, "MMMM"),
+                                                    Received: totalReceived,
+                                                    Spent: stats.currentTotal,
+                                                }
+                                            ]}
+                                            barSize={32}
+                                            barGap={8}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} />
+                                            <Tooltip contentStyle={{ background: "#0c101c", border: "1px solid #1c2234", borderRadius: "8px", fontSize: "10px" }} />
+                                            <Bar dataKey="Received" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="Spent" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                                        </RechartsBar>
+                                    </ResponsiveContainer>
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="velocity"
+                                    initial={{ opacity: 0, scale: 0.99 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.99 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-full h-full"
+                                >
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={dailyTrend}>
+                                            <defs>
+                                                <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "rgba(255,255,255,0.4)" }} />
+                                            <Tooltip contentStyle={{ background: "#0c101c", border: "1px solid #1c2234", borderRadius: "8px", fontSize: "10px" }} />
+                                            <Area type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2.5} fill="url(#spendingGradient)" />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Quick Budgets Row (4 items) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Card 1: Top Category */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.4 }}
+                    whileHover={{ y: -1 }}
+                    className="glass-card p-4 flex flex-col justify-between"
+                >
+                    <div>
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Top Category</span>
+                        <h3 className="text-xl font-black mt-1 uppercase tracking-tight">{stats.topCategory?.name || "N/A"}</h3>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                            {stats.topCategory ? `${((stats.topCategory.amount / stats.currentTotal) * 100 || 0).toFixed(1)}% of total spending` : "No expenses yet"}
+                        </p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                        <span className="text-sm font-black text-primary">₹{stats.topCategory?.amount?.toLocaleString() || "0"}</span>
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                    </div>
+                </motion.div>
+
+                {/* Card 2: Monthly Budget */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.45 }}
+                    whileHover={{ y: -1 }}
+                    className="glass-card p-4 flex flex-col justify-between cursor-pointer"
+                    onClick={() => setBudgetPromptOpen(true)}
+                >
+                    <div>
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Monthly Budget</span>
+                        <h3 className="text-xl font-black mt-1 tracking-tight">
+                            ₹{userSettings?.monthlyExpenseLimit ? Math.max(0, userSettings.monthlyExpenseLimit - stats.currentTotal).toLocaleString() : "No Limit"}
+                        </h3>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">Left</p>
+                    </div>
+                    <div className="mt-3 space-y-1">
+                        {userSettings?.monthlyExpenseLimit ? (
+                            <>
+                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div
+                                        className={cn("h-full rounded-full", (stats.currentTotal / userSettings.monthlyExpenseLimit) > 0.9 ? "bg-rose-500" : "bg-primary")}
+                                        style={{ width: `${Math.min(100, (stats.currentTotal / userSettings.monthlyExpenseLimit) * 100)}%` }}
+                                    />
+                                </div>
+                                <div className="flex justify-between text-[8px] font-bold text-muted-foreground">
+                                    <span>{((stats.currentTotal / userSettings.monthlyExpenseLimit) * 100).toFixed(0)}% Used</span>
+                                </div>
+                            </>
+                        ) : (
+                            <span className="text-[9px] text-primary hover:underline">Click to set budget limit</span>
+                        )}
+                    </div>
+                </motion.div>
+
+                {/* Card 3: Budget Status */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.5 }}
+                    whileHover={{ y: -1 }}
+                    className="glass-card p-4 flex flex-col justify-between"
+                >
+                    <div>
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Budget Status</span>
+                        <h3 className="text-xl font-black mt-1 tracking-tight">
+                            {userSettings?.monthlyExpenseLimit ? `₹${Math.max(0, userSettings.monthlyExpenseLimit - stats.currentTotal).toLocaleString()} left` : "Unmanaged"}
+                        </h3>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                            {userSettings?.monthlyExpenseLimit ? `Out of ₹${userSettings.monthlyExpenseLimit.toLocaleString()}` : "No budget limit configured"}
+                        </p>
+                    </div>
+                    <div className="mt-3">
+                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div
+                                className={cn("h-full rounded-full", (stats.currentTotal / (userSettings?.monthlyExpenseLimit || 1)) > 0.9 ? "bg-rose-500" : "bg-emerald-500")}
+                                style={{ width: `${Math.min(100, (stats.currentTotal / (userSettings?.monthlyExpenseLimit || 1)) * 100)}%` }}
+                            />
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Card 4: Expenses This Month */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.55 }}
+                    whileHover={{ y: -1 }}
+                    className="glass-card p-4 flex flex-col justify-between"
+                >
+                    <div>
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Expenses This Month</span>
+                        <h3 className="text-xl font-black mt-1 tracking-tight">₹{stats.currentTotal.toLocaleString()}</h3>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">Across {activeCategoriesCount} active categories</p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground">Detailed Tracker</span>
+                        <Link href="/expenses" className="text-[9px] text-primary font-bold hover:underline">VIEW LIST</Link>
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Recent Activity & Top Categories Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Column 1: Recent Activity */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.6 }}
+                    className="glass-card p-4 space-y-4"
+                >
+                    <div className="flex justify-between items-center border-b border-border/40 pb-2">
+                        <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground">Recent Activity</h2>
+                        <Link href="/expenses" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                            View All <ChevronRight className="h-3 w-3" />
+                        </Link>
+                    </div>
+
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1.5">
+                        {recentExpenses.map((expense: any, idx: number) => (
+                            <motion.div
+                                key={expense.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.04 }}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.01] border border-border/40 hover:bg-white/[0.03] transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8.5 w-8.5 rounded-lg flex items-center justify-center text-base bg-white/[0.04] shrink-0 border border-border">
+                                        {expense.category?.icon || "💰"}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold leading-tight truncate text-primary-foreground max-w-[150px] md:max-w-[200px]">
+                                            {expense.description || expense.category?.name}
+                                        </p>
+                                        <p className="text-[9px] text-muted-foreground mt-0.5 uppercase tracking-wider">
+                                            {format(new Date(expense.date), "dd MMM yyyy")}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 shrink-0">
+                                    <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide border", expense.isAutoGenerated ? "bg-purple-500/10 border-purple-500/20 text-purple-500" : "bg-blue-500/10 border-blue-500/20 text-blue-500")}>
+                                        {expense.isAutoGenerated ? "AUTO" : "MANUAL"}
+                                    </span>
+                                    <p className="font-extrabold text-xs text-primary-foreground">
+                                        -₹{Number(expense.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        ))}
+                        {recentExpenses.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-12">No recent transactions.</p>
+                        )}
+                    </div>
+                </motion.div>
+
+                {/* Column 2: Top Categories */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.65 }}
+                    className="glass-card p-4 space-y-4"
+                >
+                    <div className="flex justify-between items-center border-b border-border/40 pb-2">
+                        <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground">Top Categories</h2>
+                        <Link href="/categories" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                            View All <ChevronRight className="h-3 w-3" />
+                        </Link>
+                    </div>
+
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-1.5 py-1">
+                        {stats.categoryStats.slice(0, 5).map((cat, i) => {
+                            const percentage = (cat.amount / stats.currentTotal) * 100 || 0;
+                            return (
+                                <div key={i} className="space-y-1.5">
+                                    <div className="flex justify-between text-xs font-bold">
+                                        <span className="text-muted-foreground uppercase text-[10px] tracking-wider">{cat.name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-muted-foreground">{percentage.toFixed(0)}%</span>
+                                            <span>₹{cat.amount.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${percentage}%` }}
+                                            transition={{ type: "spring", stiffness: 50, damping: 12 }}
+                                            className="h-full rounded-full"
+                                            style={{ background: cat.color || CHART_COLORS[i % CHART_COLORS.length] }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {stats.categoryStats.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-12">No category data available.</p>
+                        )}
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Activity Stream Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.7 }}
+                className="glass-card p-4 space-y-4"
+            >
+                <div className="flex justify-between items-center">
+                    <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Activity className="h-4 w-4 text-purple-500" /> Activity Stream
+                    </h2>
+                </div>
+
+                <div className="flex gap-4 overflow-x-auto pb-2 pt-1 scroll-smooth snap-x custom-scrollbar pr-4">
+                    {autoExpenses.map((expense: any) => (
+                        <div
+                            key={expense.id}
+                            className="snap-start shrink-0 w-64 p-3.5 rounded-xl bg-white/[0.01] border border-border/80 flex flex-col justify-between gap-4 transition-all duration-300 hover:border-purple-500/20"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg flex items-center justify-center text-lg bg-purple-500/10 border border-purple-500/20 text-purple-500">
+                                    {expense.category?.icon || "🤖"}
+                                </div>
+                                <div className="min-w-0">
+                                    <span className="font-extrabold text-[11px] uppercase text-muted-foreground leading-none">Auto-generated</span>
+                                    <p className="text-xs font-black leading-tight truncate text-primary-foreground mt-0.5">
+                                        {expense.description || expense.category?.name}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-end border-t border-border/20 pt-2.5">
+                                <span className="text-[10px] text-muted-foreground uppercase">{format(new Date(expense.date), "MMM dd")}</span>
+                                <span className="text-sm font-black text-purple-500">₹{Number(expense.amount).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    ))}
+                    {autoExpenses.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-6 w-full">No recurring activities this month.</p>
+                    )}
+                </div>
+            </motion.div>
         </div>
     );
 }
+
+const getBankBranding = (bankName: string) => {
+    switch (bankName.toUpperCase()) {
+        case "AXIS":
+            return {
+                bg: "bg-[#861f41]/10 border-[#861f41]/20 text-[#861f41]",
+                logoColor: "#861f41",
+                displayName: "AXIS BANK",
+            };
+        case "BOB":
+            return {
+                bg: "bg-[#f05a28]/10 border-[#f05a28]/20 text-[#f05a28]",
+                logoColor: "#f05a28",
+                displayName: "BOB",
+            };
+        case "KOTAK":
+            return {
+                bg: "bg-[#ec1c24]/10 border-[#ec1c24]/20 text-[#ec1c24]",
+                logoColor: "#ec1c24",
+                displayName: "KOTAK",
+            };
+        case "SBI":
+            return {
+                bg: "bg-[#00a5ec]/10 border-[#00a5ec]/20 text-[#00a5ec]",
+                logoColor: "#00a5ec",
+                displayName: "SBI",
+            };
+        default:
+            return {
+                bg: "bg-primary/10 border-primary/20 text-primary",
+                logoColor: "#7c3aed",
+                displayName: bankName,
+            };
+    }
+};
+
+const BankLogo = ({ bankName }: { bankName: string }) => {
+    const normName = bankName.toUpperCase();
+    if (normName === "AXIS") {
+        return (
+            <div className="h-8 w-8 rounded-lg bg-[#861f41]/10 flex items-center justify-center border border-[#861f41]/20">
+                <span className="font-black text-xs text-[#861f41]">A</span>
+            </div>
+        );
+    }
+    if (normName === "BOB") {
+        return (
+            <div className="h-8 w-8 rounded-lg bg-[#f05a28]/10 flex items-center justify-center border border-[#f05a28]/20">
+                <span className="font-black text-xs text-[#f05a28]">B</span>
+            </div>
+        );
+    }
+    if (normName === "KOTAK") {
+        return (
+            <div className="h-8 w-8 rounded-lg bg-[#ec1c24]/10 flex items-center justify-center border border-[#ec1c24]/20">
+                <span className="font-black text-xs text-[#ec1c24]">K</span>
+            </div>
+        );
+    }
+    if (normName === "SBI") {
+        return (
+            <div className="h-8 w-8 rounded-lg bg-[#00a5ec]/10 flex items-center justify-center border border-[#00a5ec]/20">
+                <span className="font-black text-xs text-[#00a5ec]">S</span>
+            </div>
+        );
+    }
+    return (
+        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+            <span className="font-black text-xs text-primary">{bankName.charAt(0)}</span>
+        </div>
+    );
+};
+

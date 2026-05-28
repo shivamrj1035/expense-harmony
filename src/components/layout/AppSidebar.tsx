@@ -34,16 +34,16 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
 
   useEffect(() => {
-    async function fetchSettings() {
+    async function fetchSidebarData() {
       try {
         const settings = await getUserSettings();
         setIsPrivacyEnabled(!!settings?.isPrivacyEnabled);
       } catch (error) {
-        console.error("Failed to fetch privacy settings:", error);
+        console.error("Failed to fetch sidebar data:", error);
       }
     }
-    fetchSettings();
-  }, []);
+    fetchSidebarData();
+  }, [isPrivacyUnlocked]);
 
   const isPrivacyActive = isPrivacyEnabled && !isPrivacyUnlocked;
 
