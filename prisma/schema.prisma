@@ -18,11 +18,13 @@ model User {
   reportDay       Int              @default(1) // 1-31 for Monthly, 0-6 for Weekly
   showStocksInSummary Boolean     @default(false)
   showMutualFundsInSummary Boolean @default(false)
+  showMoneyManagementInSummary Boolean @default(false)
   createdAt       DateTime         @default(now())
   categories      Category[]
   expenses        Expense[]
   stocks          Stock[]
   mutualFunds     MutualFund[]
+  bankAccounts    BankAccount[]
   privacyPin      String?
   isPrivacyEnabled Boolean         @default(false)
   manualBalance   Float?
@@ -121,5 +123,34 @@ model PushSubscription {
   auth      String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+model BankAccount {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+  bankName      String          // "KOTAK" | "BOB" | "AXIS" | "SBI"
+  accountNumber String
+  createdAt     DateTime        @default(now())
+  statements    BankStatement[]
+
+  @@unique([userId, bankName, accountNumber])
+}
+
+model BankStatement {
+  id              String   @id @default(cuid())
+  bankAccountId   String
+  bankAccount     BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  month           String   // e.g., "2026-04"
+  duration        String?  // e.g., "01-Apr-2026 to 30-Apr-2026"
+  startingBalance Float
+  closingBalance  Float
+  totalSpent      Float    @default(0)
+  totalReceived   Float    @default(0)
+  transactions    Json     // Array of Transaction objects
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([bankAccountId, month])
 }
 

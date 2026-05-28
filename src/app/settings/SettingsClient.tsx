@@ -320,6 +320,25 @@ export default function SettingsClient({ user }: { user: any }) {
                             }}
                         />
                     </div>
+
+                    <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <Wallet className="h-4 w-4" />
+                            <span>Show Money Management in Summary</span>
+                        </div>
+                        <Switch
+                            checked={user.showMoneyManagementInSummary}
+                            onCheckedChange={async (checked) => {
+                                try {
+                                    await updateUserSettings({ showMoneyManagementInSummary: checked });
+                                    toast.success("Dashboard preference updated");
+                                    window.location.reload();
+                                } catch (error) {
+                                    toast.error("Failed to update preference");
+                                }
+                            }}
+                        />
+                    </div>
                 </GlassCard>
 
                 <GlassCard className="p-6 space-y-6">
